@@ -4,12 +4,17 @@ AM_LDFLAGS  =
 
 # Unit test scripts
 TESTS = \
-    lingebra.sh
+    lingebra.sh \
+    R_undef.sh
 
 
 # Unit test programs
 check_PROGRAMS = \
-    lingebra
+    lingebra \
+    R_undef
 
 lingebra_SOURCES = \
     lingebra.cxx
+
+R_undef_SOURCES = \
+    R_undef.cxx

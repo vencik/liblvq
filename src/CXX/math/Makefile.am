@@ -1,2 +1,3 @@
 noinst_HEADERS = \
-    lingebra.hxx
+    lingebra.hxx \
+    R_undef.hxx
