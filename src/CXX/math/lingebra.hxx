@@ -33,7 +33,7 @@ class vector {
      *  \param  size  Vector size
      *  \param  init  Initialiser
      */
-    vector(size_t size, const base_t & init):
+    vector(size_t size, const base_t & init = 0):
         m_impl(size, init)
     {}
 
@@ -194,12 +194,33 @@ class matrix {
     /**
      *  \brief  Constructor
      *
-     *  TODO
-     *
-     *  @param  initl  Initialiser
+     *  \param  row_cnt  Number of rows
+     *  \param  col_cnt  Number of columns
+     *  \param  init     Initialiser
      */
-    matrix()
-    {}
+    matrix(size_t row_cnt, size_t col_cnt, const base_t & init = 0) {
+        m_impl.reserve(row_cnt);
+
+        for (size_t i = 0; i < row_cnt; ++i)
+            m_impl.emplace_back(col_cnt, init);
+    }
+
+    /**
+     *  \brief  Constructor (rows initialisation)
+     *
+     *  \param  inits  Row initialiser lists
+     */
+    matrix(
+        const std::initializer_list<std::initializer_list<base_t> > & inits)
+    {
+        m_impl.reserve(sizeof(inits));
+
+        std::for_each(inits.begin(), inits.end(),
+        [this](const std::initializer_list<base_t> & init) {
+            m_impl.emplace_back(init);
+        });
+    }
+
 
     /**
      *  Multiplication by a vector

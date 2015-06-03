@@ -53,6 +53,9 @@ typedef double base_t;
 /** Vector type */
 typedef math::vector<base_t> vector_t;
 
+/** Matrix type */
+typedef math::matrix<base_t> matrix_t;
+
 
 /** Vector test */
 static int test_vector() {
@@ -60,6 +63,25 @@ static int test_vector() {
     vector_t v010({0.0, 1.0, 0.0});
 
     if (vector_t({1.0, 1.0, 0.0}) != v100 + v010) return 1;
+    if (vector_t({1.0,-1.0, 0.0}) != v100 - v010) return 2;
+
+    if (10 + 18 + 28 != vector_t({2, 3, 4}) * vector_t({5, 6, 7})) return 3;
+
+    return 0;  // all OK
+}
+
+
+/** Matrix test */
+static int test_matrix() {
+    matrix_t m1({
+        {1, 0, 0, 1},
+        {0, 1, 0, 2},
+        {0, 0, 1, 3}
+    });
+
+    if (vector_t({0, 1, 0, 2}) != m1[1]) return 21;
+
+    if (vector_t({5, 10, 15}) != m1 * vector_t({1, 2, 3, 4})) return 22;
 
     return 0;  // all OK
 }
@@ -71,6 +93,8 @@ static int main_impl(int argc, char * const argv[]) {
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
         if (0 != (exit_code = test_vector())) break;
+
+        if (0 != (exit_code = test_matrix())) break;
 
     } while (0);  // end of pragmatic loop
 
