@@ -1,0 +1,22 @@
+Learning Vector Quantisation Library
+====================================
+
+
+Overview
+--------
+
+See
+http://en.wikipedia.org/wiki/Learning_vector_quantization
+for starters.
+
+
+License
+-------
+
+The software is available opensource under the terms of 3-clause BSD license.
+
+
+Author
+------
+
+Vaclav Krpec  <vencik@razdva.cz>
