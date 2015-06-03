@@ -11,5 +11,5 @@ TESTS = \
 check_PROGRAMS = \
     lingebra
 
-lingera_SOURCES = \
+lingebra_SOURCES = \
     lingebra.cxx

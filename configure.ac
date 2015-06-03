@@ -140,6 +140,5 @@ AC_CONFIG_FILES([
     src/CXX/ml/Makefile
     src/CXX/unit_test/Makefile
     src/CXX/unit_test/math/Makefile
-    src/CXX/unit_test/ml/Makefile
 ])
 AC_OUTPUT

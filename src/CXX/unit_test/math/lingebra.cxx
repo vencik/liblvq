@@ -42,9 +42,27 @@
 
 #include "math/lingebra.hxx"
 
+#include <iostream>
 #include <exception>
 #include <stdexcept>
 
+
+/** Base numeric type */
+typedef double base_t;
+
+/** Vector type */
+typedef math::vector<base_t> vector_t;
+
+
+/** Vector test */
+static int test_vector() {
+    vector_t v100({1.0, 0.0, 0.0});
+    vector_t v010({0.0, 1.0, 0.0});
+
+    if (vector_t({1.0, 1.0, 0.0}) != v100 + v010) return 1;
+
+    return 0;  // all OK
+}
 
 
 /** Unit test */
@@ -52,8 +70,7 @@ static int main_impl(int argc, char * const argv[]) {
     int exit_code = 64;  // pessimistic assumption
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
-
-        exit_code = 0;  // success
+        if (0 != (exit_code = test_vector())) break;
 
     } while (0);  // end of pragmatic loop
 
@@ -75,7 +92,7 @@ int main(int argc, char * const argv[]) {
         std::cerr
             << "Standard exception caught: "
             << x.what()
-            << std::endl;;
+            << std::endl;
     }
     catch (...) {
         std::cerr

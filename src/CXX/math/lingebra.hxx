@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <algorithm>
-#include <stdarg>
+#include <cstdarg>
 
 
 namespace math {
@@ -42,7 +42,7 @@ class vector {
      *
      *  @param  initl  Initialiser
      */
-    vector(const std::initialiser_list<base_t> & initl):
+    vector(const std::initializer_list<base_t> & initl):
         m_impl(initl)
     {}
 
@@ -61,7 +61,7 @@ class vector {
         std::for_each(m_impl.begin(), m_impl.end(),
         [coef](base_t & item) {
             item *= coef;
-        }
+        });
 
         return *this;
     }
@@ -146,6 +146,23 @@ class vector {
         return result;
     }
 
+    /** Vectors equal */
+    bool operator == (const vector & rarg) const {
+        if (m_impl.size() != rarg.m_impl.size())
+            throw std::logic_error(
+                "math::vector: comparing incompatible args");
+
+        for (size_t i = 0; i < m_impl.size(); ++i)
+            if (m_impl[i] != rarg.m_impl[i]) return false;
+
+        return true;
+    }
+
+    /** Vectors not equal */
+    bool operator != (const vector & rarg) const {
+        return !(*this == rarg);
+    }
+
 };  // end of template class vector
 
 /** Product of scalar and vector */
@@ -166,11 +183,11 @@ class matrix {
 
     typedef M base_t;  /**< Base numeric type */
 
-    typedef vector<base_t> vector;  /**< Vector of the base type */
+    typedef vector<base_t> vector_t;  /**< Vector of the base type */
 
     private:
 
-    typedef std::vector<vector> m_impl;  /**< Implementation */
+    std::vector<vector_t> m_impl;  /**< Implementation */
 
     public:
 
@@ -189,8 +206,8 @@ class matrix {
      *
      *  \param  rarg  Vector
      */
-    vector operator * (const vector & rarg) const {
-        vector result(m_impl.size(), 0);
+    vector_t operator * (const vector_t & rarg) const {
+        vector_t result(m_impl.size(), 0);
 
         for (size_t i = 0; i < m_impl.size(); ++i)
             result[i] = m_impl[i] * rarg;
@@ -199,10 +216,10 @@ class matrix {
     }
 
     /** Access operator */
-    vector & operator [] (size_t i) { return m_impl[i]; }
+    vector_t & operator [] (size_t i) { return m_impl[i]; }
 
     /** Access operator (const) */
-    const vector & operator [] (size_t i) const { return m_impl[i]; }
+    const vector_t & operator [] (size_t i) const { return m_impl[i]; }
 
 };  // end of template class matrix
 
