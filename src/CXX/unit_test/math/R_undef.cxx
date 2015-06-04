@@ -58,18 +58,18 @@ static int test_realx() {
     realx_t r456  = 456;
     realx_t r0    = 0;
 
-    if (r123 == undef)      return 1;
-    if (undef != undef)     return 2;
-    if (!(undef == undef))  return 3;
-    if (!(r123 == r123))    return 4;
-    if (r0 == r123)         return 5;
-    if (!(r0 != r123))      return 6;
-    if (!(r0 != undef))     return 7;
-    if (r0 != r123 + undef) return 8;
-    if (r0 != undef - r456) return 9;
-    if (r0 != r456 * undef) return 10;
-    if (r123 / undef != 0)  return 11;
-    if (undef / r456 != r0) return 12;
+    if (r123 == undef)       return 1;
+    if (undef != undef)      return 2;
+    if (!(undef == undef))   return 3;
+    if (!(r123 == r123))     return 4;
+    if (r0 == r123)          return 5;
+    if (!(r0 != r123))       return 6;
+    if (!(r0 != undef))      return 7;
+    if (r0 != r123 + undef)  return 8;
+    if (r0 != undef - r456)  return 9;
+    if (r0 != r456 * undef)  return 10;
+    if (r123 / undef != 0.0) return 11;
+    if (undef / r456 != r0)  return 12;
 
     return 0;  // all OK
 }

@@ -60,23 +60,23 @@ class realx {
     base_t m_impl;  /**< Implementation */
 
     /**
-     *  \brief  Binary operator template implementation
+     *  \brief  Binary assignment operator template implementation
      *
      *  \param  bin_op    Operation implementation for defined values
      *  \param  larg      Operation left argument
      *  \param  rarg      Operation right argument
      *  \param  on_undef  Operation result if an operand is undefined
-     *
-     *  \return Operation result (or \c on_undef)
      */
     template <class BinOp>
-    static base_t undef_case(
-        BinOp  bin_op,
-        base_t larg,
-        base_t rarg,
-        base_t on_undef)
+    static void undef_case_binop_assign(
+        BinOp          bin_op,
+        base_t       & larg,
+        const base_t & rarg,
+        const base_t & on_undef)
     {
-        return isnan(larg) || isnan(rarg) ? on_undef : bin_op(larg, rarg);
+        larg = isnan(larg) || isnan(rarg)
+             ? on_undef
+             : bin_op(larg, rarg);
     }
 
     public:
@@ -87,6 +87,12 @@ class realx {
     /** Constructor */
     realx(base_t val): m_impl(val) {}
 
+    /** Defined check */
+    bool is_defined() const { return !isnan(m_impl); }
+
+    /** Base type value getter */
+    operator base_t () const { return m_impl; }
+
     /** Comparison */
     bool operator == (const realx & rarg) const {
         if (isnan(m_impl)) return isnan(rarg.m_impl);
@@ -94,38 +100,96 @@ class realx {
         return isnan(rarg.m_impl) ? false : m_impl == rarg.m_impl;
     }
 
+    /** Comparison with base type */
+    bool operator == (const base_t & rarg) const {
+        return *this == realx(rarg);
+    }
+
     /** Comparison (negated) */
     bool operator != (const realx & rarg) const { return !(*this == rarg); }
 
+    /** Comparison with base type (negated) */
+    bool operator != (const base_t & rarg) const { return !(*this == rarg); }
+
+    /** Addition (in place) */
+    realx & operator += (const realx & rarg) {
+        undef_case_binop_assign(
+            [](const base_t & r, const base_t & l) { return r + l; },
+            m_impl, rarg.m_impl, 0);
+
+        return *this;
+    }
+
     /** Addition */
     realx operator + (const realx & rarg) const {
-        return undef_case(
-            [](base_t r, base_t l) { return r + l; },
+        realx result(*this);
+
+        return result += rarg;
+    }
+
+    /** Subtraction (in place) */
+    realx & operator -= (const realx & rarg) {
+        undef_case_binop_assign(
+            [](const base_t & r, const base_t & l) { return r - l; },
             m_impl, rarg.m_impl, 0);
+
+        return *this;
     }
 
     /** Subtraction */
     realx operator - (const realx & rarg) const {
-        return undef_case(
-            [](base_t r, base_t l) { return r - l; },
+        realx result(*this);
+
+        return result -= rarg;
+    }
+
+    /** Multiplication (in place) */
+    realx & operator *= (const realx & rarg) {
+        undef_case_binop_assign(
+            [](const base_t & r, const base_t & l) { return r * l; },
             m_impl, rarg.m_impl, 0);
+
+        return *this;
     }
 
     /** Multiplication */
     realx operator * (const realx & rarg) const {
-        return undef_case(
-            [](base_t r, base_t l) { return r * l; },
+        realx result(*this);
+
+        return result *= rarg;
+    }
+
+    /** Division (in place) */
+    realx & operator /= (const realx & rarg) {
+        undef_case_binop_assign(
+            [](const base_t & r, const base_t & l) { return r / l; },
             m_impl, rarg.m_impl, 0);
+
+        return *this;
     }
 
     /** Division */
     realx operator / (const realx & rarg) const {
-        return undef_case(
-            [](base_t r, base_t l) { return r / l; },
-            m_impl, rarg.m_impl, 0);
+        realx result(*this);
+
+        return result /= rarg;
     }
 
 };  // end of template class realx
+
+
+/** \c realx comparison with base type */
+template <typename base_t>
+bool operator == (const base_t & larg, const realx<base_t> & rarg) {
+    return rarg == larg;  // equality is symmetric
+}
+
+
+/** \c realx comparison with base type (negated) */
+template <typename base_t>
+bool operator != (const base_t & larg, const realx<base_t> & rarg) {
+    return rarg != larg;  // inequality is symmetric
+}
 
 }  // end of namespace math
 

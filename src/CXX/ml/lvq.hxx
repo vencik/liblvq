@@ -109,7 +109,7 @@ class lvq {
     size_t classify(const input_t & input) const {
         size_t cluster = 0;
 
-        math::vector<base_t> dist2(m_theta.row_cnt(), 0)
+        math::vector<base_t> dist2(m_theta.row_cnt(), 0);
 
         for (size_t i = 0; i < m_theta.row_cnt(); ++i) {
             auto diff = input + m_theta[i];

@@ -87,6 +87,9 @@ class vector {
         m_impl(initl)
     {}
 
+    /** Vector size */
+    size_t size() const { return m_impl.size(); }
+
     /** Access operator */
     base_t & operator [] (size_t i) { return m_impl[i]; }
 
@@ -262,6 +265,8 @@ class matrix {
         });
     }
 
+    /** Number of rows */
+    size_t row_cnt() const { return m_impl.size(); }
 
     /**
      *  Multiplication by a vector
