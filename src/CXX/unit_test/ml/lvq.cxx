@@ -76,10 +76,10 @@ std::ostream & operator << (std::ostream & out, const base_t & x) {
 std::ostream & operator << (std::ostream & out, const lvq_t::input_t & input) {
     out << '[';
 
-    for (size_t i = 0; i < input.size() - 1; ++i)
+    for (size_t i = 0; i < input.rank() - 1; ++i)
         out << input[i] << ' ';
 
-    out << input[input.size() - 1] << ']';
+    out << input[input.rank() - 1] << ']';
 
     return out;
 }
@@ -97,8 +97,10 @@ static lvq_t::input_t input(const std::initializer_list<base_t> & init) {
 }
 
 
-/** LVQ test */
-static int test_lvq() {
+/** LVQ low-level test */
+static int test_lvq_ll() {
+    std::cout << "Low-level test BEGIN" << std::endl;
+
     int error_cnt = 0;
 
     std::list<std::pair<lvq_t::input_t, unsigned> > inputs;
@@ -122,7 +124,7 @@ static int test_lvq() {
             const auto & vector = input.first;
             unsigned     clas5  = input.second;
 
-            auto dnorm2 = lvq.train(vector, clas5, 0.01);
+            auto dnorm2 = lvq.train1(vector, clas5, 0.01);
 
             std::cout << vector << " "
                 << "|delta|^2 == " << dnorm2
@@ -167,7 +169,52 @@ static int test_lvq() {
             << std::endl;
     });
 
-    return error_cnt;  // all OK
+    std::cout << "Low-level test END" << std::endl;
+
+    return error_cnt;
+}
+
+
+/** LVQ test */
+static int test_lvq() {
+    std::cout << "Test BEGIN" << std::endl;
+
+    std::list<std::pair<lvq_t::input_t, size_t> > inputs;
+    inputs.emplace_back(input({1, 0, 0}), 0);
+    inputs.emplace_back(input({0, 1, 0}), 1);
+    inputs.emplace_back(input({0, 0, 1}), 2);
+    inputs.emplace_back(input({1, 1, 0}), 3);
+    inputs.emplace_back(input({1, 0, 1}), 4);
+    inputs.emplace_back(input({1, 1, 1}), 5);
+
+    inputs.emplace_back(input({ 0.8, 0.1,-0.2}), 0);
+    inputs.emplace_back(input({ 0.2, 1.1,-0.3}), 1);
+    inputs.emplace_back(input({-0.3, 0.1, 0.9}), 2);
+    inputs.emplace_back(input({ 0.9, 1.2, 0.1}), 3);
+    inputs.emplace_back(input({ 0.9, 0.2, 1.1}), 4);
+    inputs.emplace_back(input({ 1.3, 0.8, 1.1}), 5);
+
+    inputs.emplace_back(input({ 1.1,-0.1,-0.1}), 0);
+    inputs.emplace_back(input({ 0.0, 1.1,-0.1}), 1);
+    inputs.emplace_back(input({-0.1, 0.2, 0.8}), 2);
+    inputs.emplace_back(input({ 0.9, 1.1, 0.0}), 3);
+    inputs.emplace_back(input({ 0.8,-0.1, 1.0}), 4);
+    inputs.emplace_back(input({ 1.2, 0.9, 1.0}), 5);
+
+    lvq_t lvq(3, 6);
+
+    // Training
+    std::cout << "Training phase" << std::endl;
+
+    lvq.train(inputs);
+
+    float lrate = lvq.learn_rate(inputs);
+
+    std::cout << "Learn rate: " << lrate << std::endl;
+
+    std::cout << "Test END" << std::endl;
+
+    return lrate != 1.0 ? 1 : 0;
 }
 
 
@@ -176,6 +223,8 @@ static int main_impl(int argc, char * const argv[]) {
     int exit_code = 64;  // pessimistic assumption
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
+        if (0 != (exit_code = test_lvq_ll())) break;
+
         if (0 != (exit_code = test_lvq())) break;
 
     } while (0);  // end of pragmatic loop

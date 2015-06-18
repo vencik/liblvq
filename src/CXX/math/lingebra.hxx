@@ -87,8 +87,8 @@ class vector {
         m_impl(initl)
     {}
 
-    /** Vector size */
-    size_t size() const { return m_impl.size(); }
+    /** Vector rank */
+    size_t rank() const { return m_impl.size(); }
 
     /** Access operator */
     base_t & operator [] (size_t i) { return m_impl[i]; }
@@ -120,6 +120,20 @@ class vector {
         result *= coef;
         return result;
     }
+
+    /**
+     *  \brief  Division by scalar (in place)
+     *
+     *  \param  denom  Scalar denominator
+     */
+    vector & operator /= (const base_t & denom) { return *this *= 1/denom; }
+
+    /**
+     *  \brief  Division by scalar
+     *
+     *  \param  denom  Scalar denominator
+     */
+    vector operator / (const base_t & denom) const { return *this * 1/denom; }
 
     /**
      *  \brief  Scalar multiplication

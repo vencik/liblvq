@@ -1,7 +1,7 @@
 /**
- *  R u {undef} unit test
+ *  LVQ: learn training data
  *
- *  \date    2015/06/03
+ *  \date    2015/06/18
  *  \author  Vaclav Krpec  <vencik@razdva.cz>
  *
  *
@@ -39,59 +39,114 @@
 
 
 #include "config.hxx"
+#include "model.hxx"
 
-#include "math/R_undef.hxx"
-
+#include <list>
 #include <iostream>
+#include <limits>
 #include <exception>
 #include <stdexcept>
 
 
-/** Real number or undef */
-typedef math::realx<double> realx_t;
+/**
+ *  \brief  Read training vector
+ *
+ *  \param  in    Input
+ *  \param  rank  Vector rank
+ *
+ *  \return Training vector & cluster number
+ */
+static std::pair<lvq_t::input_t, size_t> read_train_set_item(
+    std::istream & in,
+    size_t         rank)
+{
+    size_t cluster;
+    if ((in >> cluster).fail())
+        throw std::runtime_error(
+            "parse error: cluster number expected");
 
+    lvq_t::input_t vector(rank);
+    in >> vector;
 
-/** R u {undef} test */
-static int test_realx() {
-    realx_t undef;
-    realx_t r123  = 123;
-    realx_t r456  = 456;
-    realx_t r0    = 0;
-
-    if (r123 == undef)          return 1;
-    if (undef != undef)         return 2;
-    if (!(undef == undef))      return 3;
-    if (!(r123 == r123))        return 4;
-    if (r0 == r123)             return 5;
-    if (!(r0 != r123))          return 6;
-    if (!(r0 != undef))         return 7;
-    if (undef != r123 + undef)  return 8;
-    if (undef != undef - r456)  return 9;
-    if (undef != r456 * undef)  return 10;
-    if (r123 / undef != undef)  return 11;
-    if (undef / r456 != undef)  return 12;
-
-    return 0;  // all OK
+    return std::pair<lvq_t::input_t, size_t>(vector, cluster);
 }
 
 
-/** Unit test */
+/**
+ *  \brief  Train LVQ model
+ *
+ *  \param  input_rank  Input vector rank
+ *
+ *  \return Exit code
+ */
+static int train(
+    size_t input_rank)
+{
+    size_t clusters = 0;  // cluster count
+
+    // Read raining set
+    std::list<std::pair<lvq_t::input_t, size_t> > train_set;
+
+    while (!std::cin.eof() && EOF != std::cin.peek()) {
+        auto pair = read_train_set_item(std::cin, input_rank);
+
+        // Ignore everything till EOL
+        std::cin.ignore(
+            std::numeric_limits<std::streamsize>::max(),
+            '\n');
+
+        std::cerr
+            << pair.second << ": " << pair.first << std::endl;
+
+        if (clusters < pair.second + 1)
+            clusters = pair.second + 1;
+
+        train_set.push_back(pair);
+    }
+
+    lvq_t lvq(input_rank, clusters);
+
+    // Train training set
+    lvq.train(train_set);
+
+    // Check learning rate
+    float lrate = lvq.learn_rate(train_set);
+
+    std::cout << "Learn rate: " << lrate << std::endl;
+
+    // Print cluster representants
+    for (size_t i = 0; i < clusters; ++i)
+        std::cout << lvq.get(i) << std::endl;
+
+    return 0;
+}
+
+
+/** Main routine */
 static int main_impl(int argc, char * const argv[]) {
-    int exit_code = 64;  // pessimistic assumption
+    int exit_code = 1;  // faulty execution assumption
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
-        if (0 != (exit_code = test_realx())) break;
+        // Read command line arguments
+        if (argc < 2) {
+            std::cerr
+                << "Usage: " << argv[0] << " <input_rank>" << std::endl;
+
+            break;
+        }
+
+        exit_code = 64;  // pessimistic assumption
+
+        size_t input_rank = ::atoi(argv[1]);
+
+        exit_code = train(input_rank);
 
     } while (0);  // end of pragmatic loop
-
-    std::cerr
-        << "Exit code: " << exit_code
-        << std::endl;
 
     return exit_code;
 }
 
-/** Unit test exception-safe wrapper */
+/** Main routine exception-safe wrapper */
 int main(int argc, char * const argv[]) {
     int exit_code = 128;
 

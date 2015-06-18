@@ -10,7 +10,8 @@ SUBDIRS = \
 
 # Internal headers
 noinst_HEADERS = \
-    config.hxx
+    config.hxx \
+    model.hxx
 
 lib_LTLIBRARIES = \
     liblvq.la
@@ -21,7 +22,16 @@ liblvq_la_LIBADD =
 
 
 # Executables
-bin_PROGRAMS =
+bin_PROGRAMS = \
+    lvq_train \
+    lvq_classify
 
+lvq_train_SOURCES = \
+    model.cxx \
+    train.cxx
+
+lvq_classify_SOURCES = \
+    model.cxx \
+    classify.cxx
 
 LDADD = liblvq.la

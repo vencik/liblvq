@@ -65,21 +65,19 @@ class realx {
      *  \param  bin_op    Operation implementation for defined values
      *  \param  larg      Operation left argument
      *  \param  rarg      Operation right argument
-     *  \param  on_undef  Operation result if an operand is undefined
      */
     template <class BinOp>
     static void undef_case_binop_assign(
         BinOp          bin_op,
         base_t       & larg,
-        const base_t & rarg,
-        const base_t & on_undef)
+        const base_t & rarg)
     {
-        larg = isnan(larg) || isnan(rarg)
-             ? on_undef
-             : bin_op(larg, rarg);
+        larg = isnan(larg) || isnan(rarg) ? NAN : bin_op(larg, rarg);
     }
 
     public:
+
+    static const realx undef;  // Undefined value
 
     /** Default constructor (undef) */
     realx(): m_impl(NAN) {}
@@ -115,7 +113,7 @@ class realx {
     realx & operator += (const realx & rarg) {
         undef_case_binop_assign(
             [](const base_t & r, const base_t & l) { return r + l; },
-            m_impl, rarg.m_impl, 0);
+            m_impl, rarg.m_impl);
 
         return *this;
     }
@@ -131,7 +129,7 @@ class realx {
     realx & operator -= (const realx & rarg) {
         undef_case_binop_assign(
             [](const base_t & r, const base_t & l) { return r - l; },
-            m_impl, rarg.m_impl, 0);
+            m_impl, rarg.m_impl);
 
         return *this;
     }
@@ -147,7 +145,7 @@ class realx {
     realx & operator *= (const realx & rarg) {
         undef_case_binop_assign(
             [](const base_t & r, const base_t & l) { return r * l; },
-            m_impl, rarg.m_impl, 0);
+            m_impl, rarg.m_impl);
 
         return *this;
     }
@@ -163,7 +161,7 @@ class realx {
     realx & operator /= (const realx & rarg) {
         undef_case_binop_assign(
             [](const base_t & r, const base_t & l) { return r / l; },
-            m_impl, rarg.m_impl, 0);
+            m_impl, rarg.m_impl);
 
         return *this;
     }
@@ -177,6 +175,10 @@ class realx {
 
 };  // end of template class realx
 
+// Static members
+template <typename base_t>
+const realx<base_t> realx<base_t>::undef(NAN);
+
 
 /** \c realx comparison with base type */
 template <typename base_t>
@@ -189,6 +191,13 @@ bool operator == (const base_t & larg, const realx<base_t> & rarg) {
 template <typename base_t>
 bool operator != (const base_t & larg, const realx<base_t> & rarg) {
     return rarg != larg;  // inequality is symmetric
+}
+
+
+/** Check if defined */
+template <typename base_t>
+bool isnan(const realx<base_t> & arg) {
+    return !arg.is_defined();
 }
 
 }  // end of namespace math

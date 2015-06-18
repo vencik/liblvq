@@ -1,7 +1,10 @@
+#ifndef model_hpp
+#define model_hpp
+
 /**
- *  R u {undef} unit test
+ *  LVQ model
  *
- *  \date    2015/06/03
+ *  \date    2015/06/18
  *  \author  Vaclav Krpec  <vencik@razdva.cz>
  *
  *
@@ -40,75 +43,44 @@
 
 #include "config.hxx"
 
+#include "ml/lvq.hxx"
 #include "math/R_undef.hxx"
 
 #include <iostream>
-#include <exception>
 #include <stdexcept>
 
 
-/** Real number or undef */
-typedef math::realx<double> realx_t;
+/** Base numeric type implementation */
+typedef double base_impl_t;
+
+/** Base numeric type */
+typedef math::realx<base_impl_t> base_t;
+
+/** LVQ */
+typedef ml::lvq<base_t> lvq_t;
 
 
-/** R u {undef} test */
-static int test_realx() {
-    realx_t undef;
-    realx_t r123  = 123;
-    realx_t r456  = 456;
-    realx_t r0    = 0;
-
-    if (r123 == undef)          return 1;
-    if (undef != undef)         return 2;
-    if (!(undef == undef))      return 3;
-    if (!(r123 == r123))        return 4;
-    if (r0 == r123)             return 5;
-    if (!(r0 != r123))          return 6;
-    if (!(r0 != undef))         return 7;
-    if (undef != r123 + undef)  return 8;
-    if (undef != undef - r456)  return 9;
-    if (undef != r456 * undef)  return 10;
-    if (r123 / undef != undef)  return 11;
-    if (undef / r456 != undef)  return 12;
-
-    return 0;  // all OK
-}
+/**
+ *  \brief  Serialise base numeric type
+ */
+std::ostream & operator << (std::ostream & out, const base_t & x);
 
 
-/** Unit test */
-static int main_impl(int argc, char * const argv[]) {
-    int exit_code = 64;  // pessimistic assumption
+/**
+ *  \brief  Deserialise base numeric type
+ */
+std::istream & operator >> (std::istream & in, base_t & x);
 
-    do {  // pragmatic do ... while (0) loop allowing for breaks
-        if (0 != (exit_code = test_realx())) break;
 
-    } while (0);  // end of pragmatic loop
+/**
+ *  \brief  Serialise input vector
+ */
+std::ostream & operator << (std::ostream & out, const lvq_t::input_t & input);
 
-    std::cerr
-        << "Exit code: " << exit_code
-        << std::endl;
 
-    return exit_code;
-}
+/**
+ *  \brief  Deserialise input vector
+ */
+std::istream & operator >> (std::istream & in, lvq_t::input_t & input);
 
-/** Unit test exception-safe wrapper */
-int main(int argc, char * const argv[]) {
-    int exit_code = 128;
-
-    try {
-        exit_code = main_impl(argc, argv);
-    }
-    catch (const std::exception & x) {
-        std::cerr
-            << "Standard exception caught: "
-            << x.what()
-            << std::endl;
-    }
-    catch (...) {
-        std::cerr
-            << "Unhandled non-standard exception caught"
-            << std::endl;
-    }
-
-    return exit_code;
-}
+#endif  // end of #ifndef model_hpp
