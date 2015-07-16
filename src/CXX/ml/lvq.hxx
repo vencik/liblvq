@@ -316,7 +316,7 @@ class lvq {
      *  The function provides vector of squared distance weights
      *  per each cluster.
      *  The weight is computed as follows:
-     *    v_c = sum_C dist^2_c / dist_c^2
+     *    v_c = sum_C dist_c^2 / dist_c^2
      *    w_c = v_c / sum_C v_c
      *
      *  I.e. the weight represents normalised (sum eq. 1) measure of

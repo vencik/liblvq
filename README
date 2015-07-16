@@ -10,6 +10,105 @@ http://en.wikipedia.org/wiki/Learning_vector_quantization
 for starters.
 
 
+Key features
+------------
+
+* Support of variable learning pace (controlled or self-adapted)
+* Support for undefined values in input
+* Fine-grained categorisation modes
+
+
+Modes of operation
+------------------
+
+LVQ works by clustering the input space so that each cluster is represented
+by a "centre of gravity" vector.
+It is pretty much an average of all training vectors for the cluster.
+When an input vector is supplied, LVQ computes Euclidean distances towards
+all the cluster representants; the close the input is to a particular
+representant, the greater affinity to the cluster it has.
+
+
+"Plain" n-ary classification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Finding the best matching cluster.
+This is the basic classification mode; cluster with representant most
+close to the input is returned.
+However, the LVQ algorithm may be easily modified to provide more
+fine-grained results, as follows:
+
+
+Match weights of all clusters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In this mode, the algorithm computes "match weights" for each cluster.
+The weights express linear measure of distance ratio towards each cluster
+representant, summing up to 1, as such:
+
+. Let dist_c be Euclidean distance of input vector from cluster c representant.
+. Let dist_c^2 = dist_c^T dist_c be dist_c norm squared
+. Let S = sum_C dist_c^2 be sum of the above over all clusters
+. Match pseudo-weight of the input for cluster c is now v_c = S / dist_c^2
+. Let W = 1 / sum_C v_c be weight normalising factor
+. Match weight of the input for cluster c is now w_c = W * v_c
+
+Based on the weights above, the following modes may be used:
+
+
+Top N clusters
+~~~~~~~~~~~~~~
+
+N best matching clusters are provided together with their re-normalised
+weights (i.e. sum of their weights equals 1).
+This is in fact straight forward generalisation of the above, since
+
+* for N = 1,   this mode is equivalent to the n-ary classification mode
+* for N = |C|, this mode is equivalent to the all-weights mode
+
+It may however be very useful for situations the clusters lie close to
+one another, while closeness of the clusters also mean closeness of
+the results.
+In such case, recombining parameters of results mapping to the N top matching
+clusters using their match weights may increase precision of the result.
+
+As an example, consider a simple location service using measurement of
+wireless signals strength on a railway.
+The classifier would determine position in a chain of pre-defined spots
+based on such a vector of signal strength measures.
+If we assume corellation of signal strengths with the spot location then
+it is probable that measurements taken at close spots will lie close to one
+another in the vector space.
+Now, a measurement taken at a position between spots A and B, will probably
+fall mostly into related two categories.
+Using only the plain n-ary categorisation, we'd get result of "somewhere
+aroud A".
+Using this mode, we get result of "between A and B", and using their match
+weights, we may attempt to increase the location precision to something like
+"quarter the way from A to B".
+
+
+Top clusters reaching match weight threshold
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+LVQ will provide best matching clusters, for which sum of their match weights
+reaches a threshold.
+The number of resulting clusters varies; it my be just a single cluster
+if it represents the input well enough, or more.
+In general, threshold value of 1 (or more) results in providing all
+clusters.
+Again, re-normalised match weights are provided, too.
+
+This mode may be highly usefull in situations where the classification result
+is interpreted as belonging to different groups.
+
+For example, if classifying text to content topics, one may find that a text
+in question is from 50% about topic A and 25% about topic B (the rest being
+considered unimportant).
+Detection of such cross-topic content may be very interesting, since it may
+be used as an indication of relations between topics.
+
+
 License
 -------
 
