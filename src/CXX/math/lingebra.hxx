@@ -81,7 +81,7 @@ class vector {
     /**
      *  \brief  Constructor
      *
-     *  @param  initl  Initialiser
+     *  \param  initl  Initialiser
      */
     vector(const std::initializer_list<base_t> & initl):
         m_impl(initl)

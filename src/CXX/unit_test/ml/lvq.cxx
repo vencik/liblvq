@@ -164,9 +164,49 @@ static int test_lvq_ll() {
 
     std::for_each(einputs.begin(), einputs.end(),
     [&lvq](const lvq_t::input_t & input) {
+        // Plain classification
+        const size_t cluster = lvq.classify(input);
         std::cout
-            << input << " classified as " << lvq.classify(input)
+            << input << " classified as " << cluster
             << std::endl;
+
+        // Weighed classification
+        const auto weight = lvq.classify_weight(input);
+        for (size_t c = 0; c < weight.size(); ++c)
+            std::cout
+                << (cluster == c ? "  * " : "    ")
+                << "Cluster " << c << ": " << weight[c] * 100.0 << " %"
+                << std::endl;
+
+        // Best n classification
+        static const size_t best_cnt = 3;
+
+        std::cout << "  Best " << best_cnt << ":" << std::endl;
+
+        const auto best = lvq.classify_best(input, best_cnt);
+        std::for_each(best.begin(), best.end(),
+        [](const lvq_t::cw_t & cw) {
+            std::cout
+                << "    Cluster " << cw.first << ": "
+                << cw.second * 100.0 << " %"
+                << std::endl;
+        });
+
+        // Weight threshold classification
+        static const double wthres = 0.60;  // 60% weight threshold
+
+        std::cout
+            << "  Weight threshold of "
+            << wthres * 100.0 << " %:" << std::endl;
+
+        const auto top = lvq.classify_weight_threshold(input, wthres);
+        std::for_each(top.begin(), top.end(),
+        [](const lvq_t::cw_t & cw) {
+            std::cout
+                << "    Cluster " << cw.first << ": "
+                << cw.second * 100.0 << " %"
+                << std::endl;
+        });
     });
 
     std::cout << "Low-level test END" << std::endl;

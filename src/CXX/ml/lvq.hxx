@@ -46,6 +46,7 @@
 #include "math/lingebra.hxx"
 
 #include <iostream>  // TODO: remove after debugging
+#include <cassert>
 
 
 namespace ml {
@@ -63,6 +64,8 @@ class lvq {
 
     typedef math::vector<base_t> input_t;  /**< Input vector     */
     typedef math::matrix<base_t> theta_t;  /**< Model parameters */
+
+    typedef std::pair<size_t, double> cw_t;  /**< Cluster & its weight */
 
     private:
 
@@ -251,18 +254,27 @@ class lvq {
         }
     }
 
+    private:
+
     /**
-     *  \brief  Classification
+     *  \brief  Classification (implementation)
      *
-     *  \param  input  Classified vector
+     *  \param[in ]  input  Classified vector
+     *  \param[out]  dist2  Distances squared vector
+     *  \param[out]  sumd2  Distances squared sum
      *
      *  \return Cluster
      */
-    size_t classify(const input_t & input) const {
+    size_t classify_impl(
+        const input_t        & input,
+        math::vector<base_t> & dist2,
+        base_t               & sumd2) const
+    {
+        assert(m_theta.row_cnt() == dist2.rank());
+
         size_t cluster = 0;
 
-        math::vector<base_t> dist2(m_theta.row_cnt());
-
+        sumd2 = 0;
         for (size_t i = 0; i < m_theta.row_cnt(); ++i) {
             auto diff = input - m_theta[i];
 
@@ -271,12 +283,196 @@ class lvq {
                 if (isnan(diff[j]))
                     diff[j] = 0;  // optimistic approach
 
-            dist2[i] = diff * diff;
+            dist2[i]  = diff * diff;
+            sumd2    += dist2[i];
 
             if (dist2[i] < dist2[cluster]) cluster = i;
         }
 
         return cluster;
+    }
+
+    public:
+
+    /**
+     *  \brief  Classification (n-ary)
+     *
+     *  The function provides the winning cluster.
+     *
+     *  \param  input  Classified vector
+     *
+     *  \return Cluster
+     */
+    size_t classify(const input_t & input) const {
+        math::vector<base_t> dist2(m_theta.row_cnt());
+        base_t sumd2;
+
+        return classify_impl(input, dist2, sumd2);
+    }
+
+    /**
+     *  \brief  Classification (weiged)
+     *
+     *  The function provides vector of squared distance weights
+     *  per each cluster.
+     *  The weight is computed as follows:
+     *    v_c = sum_C dist^2_c / dist_c^2
+     *    w_c = v_c / sum_C v_c
+     *
+     *  I.e. the weight represents normalised (sum eq. 1) measure of
+     *  relative distance ratio between the \c input and each cluster
+     *  representant.
+     *
+     *  \param  input  Classified vector
+     *
+     *  \return Vector of squared distance weights per cluster
+     */
+    std::vector<double> classify_weight(const input_t & input) const {
+        math::vector<base_t> dist2(m_theta.row_cnt());
+        base_t sumd2;
+
+        classify_impl(input, dist2, sumd2);
+
+        std::vector<double> weight(dist2.rank());
+        float fnorm = 0.0;
+        for (size_t i = 0; i < dist2.rank(); ++i)
+            fnorm += weight[i] = (float)(sumd2 / dist2[i]);
+        for (size_t i = 0; i < weight.size(); ++i)
+            weight[i] /= fnorm;
+
+        return weight;
+    }
+
+    private:
+
+    /**
+     *  \brief  Sort cluster weights
+     *
+     *  Provides vector of [cluster, weight] pairs, sorted by weights
+     *  in descending order.
+     *
+     *  \param  weight  Cluster weights
+     *
+     *  \return Vector of [cluster, weight] pairs
+     */
+    static std::vector<cw_t> sort_weight(const std::vector<double> & weight) {
+        std::vector<cw_t> sorted(weight.size());
+
+        for (size_t c = 0; c < weight.size(); ++c)
+            sorted[c] = cw_t(c, weight[c]);
+
+        std::sort(sorted.begin(), sorted.end(),
+        [](const cw_t & cw_l, const cw_t & cw_r) -> bool {
+            return cw_r.second < cw_l.second;
+        });
+
+        return sorted;
+    }
+
+    /**
+     *  \brief  Renormalise cluster weights
+     *
+     *  Renormalises [cluster, weight] pairs.
+     *
+     *  \param[in,out]  cw  [cluster, weighs] pairs
+     *
+     *  \return \c cw
+     */
+    static std::vector<cw_t> & renormalise(std::vector<cw_t> & cw) {
+        double fnorm = 0.0;
+
+        std::for_each(cw.begin(), cw.end(),
+        [&fnorm](const cw_t & cw) { fnorm += cw.second; });
+
+        std::for_each(cw.begin(), cw.end(),
+        [fnorm](cw_t & cw) { cw.second /= fnorm; });
+
+        return cw;
+    }
+
+    public:
+
+    /**
+     *  \brief  Best matching clusters (renormalised)
+     *
+     *  Provides \c n best matching clusters with renormalised weights.
+     *  Renormalisation means that only the weights of the \c n best
+     *  clusters are taken, as if the rest got weight of 0.
+     *
+     *  \param  weight  Cluster weights (as returned by \ref classify_weight)
+     *  \param  n       Number of output clusters
+     *
+     *  \return \c n best matching clusters with their renormalised weights
+     */
+    static std::vector<cw_t> best(
+        const std::vector<double> & weight,
+        size_t                      n)
+    {
+        std::vector<cw_t> best = sort_weight(weight);
+
+        auto pos = best.begin();
+        for (size_t i = 0; i < n && pos != best.end(); ++i, ++pos);
+
+        best.erase(pos, best.end());
+
+        return renormalise(best);
+    }
+
+    /**
+     *  \brief  Classify to best matching clusters
+     *
+     *  Same as if \ref best was applied to \ref classify_weight.
+     *
+     *  \param  input  Classified vector
+     *  \param  n      Number of output clusters
+     *
+     *  \return \c n best matching clusters with their renormalised weights
+     */
+    std::vector<cw_t> classify_best(const input_t & input, size_t n) const {
+        return best(classify_weight(input), n);
+    }
+
+    /**
+     *  \brief  Weight threshold reaching clusters
+     *
+     *  Provides best matching clusters which combined weight reaches
+     *  required threshold; i.e. sum_Cbest w_c >= wthres.
+     *  Returns Cbest with renormalised weights (see \ref best).
+     *
+     *  \param  weight  Cluster weights (as returned by \ref classify_weight)
+     *  \param  wthres  Weight threshold
+     *
+     *  \return Best matching clusters with their renormalised weights
+     */
+    static std::vector<cw_t> weight_threshold(
+        const std::vector<double> & weight,
+        double                      wthres)
+    {
+        std::vector<cw_t> best = sort_weight(weight);
+
+        auto pos = best.begin();
+        for (; pos != best.end() && 0.0 < wthres; ++pos)
+            wthres -= pos->second;
+
+        best.erase(pos, best.end());
+
+        return renormalise(best);
+    }
+
+    /**
+     *  \brief  Classify to weight threshold
+     *
+     *  Same as if \ref weight_threshold was applied to \ref classify_weight.
+     *
+     *  \param  input   Classified vector
+     *  \param  wthres  Weight threshold
+     *
+     *  \return Best matching clusters with their renormalised weights
+     */
+    std::vector<cw_t> classify_weight_threshold(
+        const input_t & input, double wthres) const
+    {
+        return weight_threshold(classify_weight(input), wthres);
     }
 
     /**
