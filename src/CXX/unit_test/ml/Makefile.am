@@ -4,12 +4,17 @@ AM_LDFLAGS  =
 
 # Unit test scripts
 TESTS = \
-    lvq.sh
+    lvq.sh \
+    load_store.sh
 
 
 # Unit test programs
 check_PROGRAMS = \
-    lvq
+    lvq \
+    load_store
 
 lvq_SOURCES = \
     lvq.cxx
+
+load_store_SOURCES = \
+    load_store.cxx

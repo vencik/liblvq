@@ -48,6 +48,8 @@
 #include <liblvq/io/debug.hxx>
 
 #include <cassert>
+#include <string>
+#include <fstream>
 
 
 namespace ml {
@@ -498,6 +500,47 @@ class lvq {
         });
 
         return learned_cnt / set.size();
+    }
+
+    /**
+     *  \brief  Store LVQ instance
+     *
+     *  \param  file  Output file
+     */
+    void store(const std::string & file) const {
+        std::ofstream fs;
+        fs.open(file, std::ios::out);
+
+        fs
+            << m_theta[0].rank() << ' '
+            << m_theta.row_cnt() << std::endl
+            << m_theta;
+
+        fs.close();
+    }
+
+    /**
+     *  \brief  Load LVQ instance
+     *
+     *  \param  file  Input file
+     *
+     *  \return LVQ instance
+     */
+    static lvq load(const std::string & file) {
+        std::ifstream fs;
+        fs.open(file, std::ios::in);
+
+        size_t dimension;
+        size_t clusters;
+        fs >> dimension >> clusters;
+
+        lvq inst(dimension, clusters);
+
+        fs >> inst.m_theta;
+
+        fs.close();
+
+        return inst;
     }
 
 };  // end of template class lvq

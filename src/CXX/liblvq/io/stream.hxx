@@ -47,10 +47,16 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <locale>
 
 
 /** Undefined value string representation */
 #define LIBLVQ__IO__UNDEF "<undef>"
+
+
+/** Skip whitespace */
+#define skip_whitespace() \
+    do { while (std::isspace(in.peek())) in.get(); } while (0)
 
 
 /**
@@ -98,7 +104,7 @@ std::istream & operator >> (
 
 
 /**
- *  \brief  Serialise extended real vector
+ *  \brief  Serialise vector
  */
 template <typename base_t>
 std::ostream & operator << (
@@ -117,7 +123,7 @@ std::ostream & operator << (
 
 
 /**
- *  \brief  Deserialise extended real vector
+ *  \brief  Deserialise vector
  */
 template <typename base_t>
 std::istream & operator >> (
@@ -138,6 +144,43 @@ std::istream & operator >> (
     if (']' != c)
         throw std::runtime_error(
             "ml::lvq::input_t parse error: ']' expected");
+
+    return in;
+}
+
+
+/**
+ *  \brief  Serialise matrix
+ */
+template <typename base_t>
+std::ostream & operator << (
+    std::ostream & out,
+    const math::matrix<base_t> & mx)
+{
+    size_t row_cnt = mx.row_cnt();
+
+    for (size_t i = 0; i < row_cnt; ++i)
+        out << mx[i] << std::endl;
+
+    return out;
+}
+
+
+/**
+ *  \brief  Deserialise matrix
+ */
+template <typename base_t>
+std::istream & operator >> (
+    std::istream & in,
+    math::matrix<base_t> & mx)
+{
+    size_t row_cnt = mx.row_cnt();
+
+    for (size_t i = 0; i < row_cnt; ++i) {
+        skip_whitespace();
+
+        in >> mx[i];
+    }
 
     return in;
 }
