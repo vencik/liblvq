@@ -1,5 +1,5 @@
-#ifndef ml__lvq_hxx
-#define ml__lvq_hxx
+#ifndef liblvq__ml__lvq_hxx
+#define liblvq__ml__lvq_hxx
 
 /**
  *  LVQ
@@ -43,9 +43,10 @@
  */
 
 
-#include "math/lingebra.hxx"
+#include <liblvq/math/lingebra.hxx>
+#include <liblvq/io/stream.hxx>
+#include <liblvq/io/debug.hxx>
 
-#include <iostream>  // TODO: remove after debugging
 #include <cassert>
 
 
@@ -183,7 +184,7 @@ class lvq {
         base_t lf           = 0.999;  // learning factor
 
         for (unsigned loop = 1; loop <= max_tlc; ++loop) {
-            std::cerr << "ml::lvq::train: loop " << loop << std::endl;
+            DEBUG_MSG("ml::lvq::train: loop " << loop);
 
             size_t i = 0;
 
@@ -195,10 +196,9 @@ class lvq {
 
                 n2 = train1(sample, cluster, lf);
 
-                std::cerr
-                    << sample << ": f == " << lf
-                    << ", |delta|^2 == " << n2
-                    << std::endl;
+                DEBUG_MSG(sample <<
+                    ": f == " << lf <<
+                    ", |delta|^2 == " << n2);
 
                 ++i;
             });
@@ -223,15 +223,12 @@ class lvq {
                 norm2 /= new_andn2;
                 new_andn2 = (norm2 * l) / (base_t)set.size();
 
-                std::cerr
-                    << "Normalised delta norm^2 == " << norm2
-                    << std::endl
-                    << "Avg normalised |delta norm^2| == " << new_andn2
-                    << std::endl;
+                DEBUG_MSG("Normalised delta norm^2 == " << norm2);
+                DEBUG_MSG("Avg normalised |delta norm^2| == " << new_andn2);
 
                 // Divergency
                 if (new_andn2 >= andn2) {
-                    std::cerr << "Divergency" << std::endl;
+                    DEBUG_MSG("Divergency");
 
                     if (++div_cnt >= max_div_cnt)
                         break;  // diverged for too long
@@ -241,7 +238,7 @@ class lvq {
 
                 // Convergency
                 else {
-                    std::cerr << "CONVERGENCY" << std::endl;
+                    DEBUG_MSG("CONVERGENCY");
 
                     div_cnt = 0;
                 }
@@ -311,7 +308,7 @@ class lvq {
     }
 
     /**
-     *  \brief  Classification (weiged)
+     *  \brief  Classification (weighed)
      *
      *  The function provides vector of squared distance weights
      *  per each cluster.
@@ -493,10 +490,9 @@ class lvq {
 
             size_t lvq_cluster = classify(sample);
 
-            std::cerr
-                << sample << ": class " << cluster
-                << ", got class " << lvq_cluster
-                << std::endl;
+            DEBUG_MSG(sample <<
+                ": class " << cluster <<
+                ", got class " << lvq_cluster);
 
             if (lvq_cluster == cluster) ++learned_cnt;
         });
@@ -508,4 +504,4 @@ class lvq {
 
 }  // end of namespace ml
 
-#endif  // end of #ifndef ml__lvq_hxx
+#endif  // end of #ifndef liblvq__ml__lvq_hxx

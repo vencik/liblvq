@@ -40,7 +40,7 @@
 
 #include "config.hxx"
 
-#include "math/R_undef.hxx"
+#include <liblvq/math/R_undef.hxx>
 
 #include <iostream>
 #include <exception>

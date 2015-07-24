@@ -1,12 +1,12 @@
 # LVQ library
 
 AC_PREREQ([2.68])
-AC_INIT([liblvq], [0.1.0], [vencik@razdva.cz])
+AC_INIT([liblvq], [0.2.0], [vencik@razdva.cz])
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([src/CXX/ml/lvq.hxx])  # TODO: use project main .cxx when created
+AC_CONFIG_SRCDIR([src/CXX/train.cxx])
 AC_CONFIG_HEADERS([src/CXX/config.hxx])
 AC_PREFIX_DEFAULT([/usr/local])
 
@@ -83,6 +83,29 @@ AC_ARG_ENABLE([doc],
     ])
 AM_CONDITIONAL([ENABLE_DOC], [test x$enable_doc = xtrue])
 
+# Enable debug messages
+AC_MSG_CHECKING([whether to produce debug messages])
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--enable-debug], [Produce debug messages (default: no)]),
+    [   # --enable-debug specified (with or without argument)
+        case "${enableval}" in
+            no|false|off)
+                AC_MSG_RESULT([no])
+                ;;
+            yes|true|on|"")
+                AC_MSG_RESULT([yes])
+                enable_debug=true
+                ;;
+            *)
+                AC_MSG_ERROR([unexpected --enable-debug argument: ${enableval}])
+                ;;
+        esac
+    ],
+    [   # --enable-debug not specified
+        AC_MSG_RESULT([no])
+    ])
+AM_CONDITIONAL([ENABLE_DEBUG], [test x$enable_debug = xtrue])
+
 
 #
 # Checks for programs
@@ -136,8 +159,10 @@ AC_CONFIG_FILES([
     Makefile
     src/Makefile
     src/CXX/Makefile
-    src/CXX/math/Makefile
-    src/CXX/ml/Makefile
+    src/CXX/liblvq/Makefile
+    src/CXX/liblvq/io/Makefile
+    src/CXX/liblvq/math/Makefile
+    src/CXX/liblvq/ml/Makefile
     src/CXX/unit_test/Makefile
     src/CXX/unit_test/math/Makefile
     src/CXX/unit_test/ml/Makefile

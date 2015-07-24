@@ -40,7 +40,7 @@
 
 #include "config.hxx"
 
-#include "math/lingebra.hxx"
+#include <liblvq/math/lingebra.hxx>
 
 #include <iostream>
 #include <exception>

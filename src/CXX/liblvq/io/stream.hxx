@@ -1,7 +1,10 @@
+#ifndef liblvq__io__stream_hxx
+#define liblvq__io__stream_hxx
+
 /**
- *  LVQ model
+ *  LVQ model stream I/O
  *
- *  \date    2015/06/18
+ *  \date    2015/07/23
  *  \author  Vaclav Krpec  <vencik@razdva.cz>
  *
  *
@@ -38,27 +41,55 @@
  */
 
 
-#include "config.hxx"
-#include "model.hxx"
+#include <liblvq/math/R_undef.hxx>
+#include <liblvq/math/lingebra.hxx>
 
+#include <iostream>
+#include <string>
 #include <stdexcept>
 
 
-std::ostream & operator << (std::ostream & out, const base_t & x) {
+/** Undefined value string representation */
+#define LIBLVQ__IO__UNDEF "<undef>"
+
+
+/**
+ *  \brief  Serialise extended real number
+ */
+template <typename base_t>
+std::ostream & operator << (
+    std::ostream & out,
+    const math::realx<base_t> & x)
+{
     if (x.is_defined())
-        out << (double)x;
+        out << (base_t)x;
     else
-        out << "<undef>";
+        out << LIBLVQ__IO__UNDEF;
 
     return out;
 }
 
 
-std::istream & operator >> (std::istream & in, base_t & x) {
-    base_impl_t x_impl;
+/**
+ *  \brief  Deserialise extended real number
+ */
+template <typename base_t>
+std::istream & operator >> (
+    std::istream & in,
+    math::realx<base_t> & x)
+{
+    base_t x_impl;
 
-    if ((in >> x_impl).fail())
-        x = base_t::undef;
+    if ((in >> x_impl).fail()) {
+        std::string undef;
+        in >> undef;
+
+        if (LIBLVQ__IO__UNDEF != undef)
+            throw std::runtime_error(
+                "math::realx: syntax error");
+
+        x = math::realx<base_t>::undef;
+    }
     else
         x = x_impl;
 
@@ -66,33 +97,49 @@ std::istream & operator >> (std::istream & in, base_t & x) {
 }
 
 
-std::ostream & operator << (std::ostream & out, const lvq_t::input_t & input) {
+/**
+ *  \brief  Serialise extended real vector
+ */
+template <typename base_t>
+std::ostream & operator << (
+    std::ostream & out,
+    const math::vector<base_t> & vec)
+{
     out << '[';
 
-    for (size_t i = 0; i < input.rank() - 1; ++i)
-        out << input[i] << ' ';
+    for (size_t i = 0; i < vec.rank() - 1; ++i)
+        out << vec[i] << ' ';
 
-    out << input[input.rank() - 1] << ']';
+    out << vec[vec.rank() - 1] << ']';
 
     return out;
 }
 
 
-std::istream & operator >> (std::istream & in, lvq_t::input_t & input) {
+/**
+ *  \brief  Deserialise extended real vector
+ */
+template <typename base_t>
+std::istream & operator >> (
+    std::istream & in,
+    math::vector<base_t> & vec)
+{
     char c;
 
     in >> c;
     if ('[' != c)
         throw std::runtime_error(
-            "lvq_t::input_t parse error: '[' expected");
+            "ml::lvq::input_t parse error: '[' expected");
 
-    for (size_t i = 0; i < input.rank(); ++i)
-        in >> input[i];
+    for (size_t i = 0; i < vec.rank(); ++i)
+        in >> vec[i];
 
     in >> c;
     if (']' != c)
         throw std::runtime_error(
-            "lvq_t::input_t parse error: ']' expected");
+            "ml::lvq::input_t parse error: ']' expected");
 
     return in;
 }
+
+#endif  // end of #ifndef liblvq__io__stream_hxx

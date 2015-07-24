@@ -41,6 +41,8 @@
 #include "config.hxx"
 #include "model.hxx"
 
+#include <liblvq/io/stream.hxx>
+
 #include <list>
 #include <iostream>
 #include <limits>

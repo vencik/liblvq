@@ -40,8 +40,8 @@
 
 #include "config.hxx"
 
-#include "ml/lvq.hxx"
-#include "math/R_undef.hxx"
+#include <liblvq/ml/lvq.hxx>
+#include <liblvq/math/R_undef.hxx>
 
 #include <list>
 #include <initializer_list>

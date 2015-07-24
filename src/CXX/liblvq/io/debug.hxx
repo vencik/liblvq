@@ -1,10 +1,10 @@
-#ifndef model_hxx
-#define model_hxx
+#ifndef liblvq__io__debug_hxx
+#define liblvq__io__debug_hxx
 
 /**
- *  LVQ model (for command-line tools)
+ *  LVQ model debug messages
  *
- *  \date    2015/06/18
+ *  \date    2015/07/24
  *  \author  Vaclav Krpec  <vencik@razdva.cz>
  *
  *
@@ -41,17 +41,24 @@
  */
 
 
-#include <liblvq/math/R_undef.hxx>
-#include <liblvq/ml/lvq.hxx>
+#include <iostream>
 
 
-/** Base numeric type implementation */
-typedef double base_t;
+/**
+ *  \brief  Debug message
+ *
+ *  If \c ENABLE_DEBUG symbol is defined, the macro will produce
+ *  logging of a debug message to \c std::cerr (including EOL).
+ *
+ *  \param  args  Operator \c << concatenated message
+ */
+#ifdef ENABLE_DEBUG
+#define DEBUG_MSG(args) \
+    do { \
+        std::cerr << "DEBUG: " << args << std::endl; \
+    } while (0)
+#else
+#define DEBUG_MSG(args) do ; while (0)
+#endif
 
-/** Extended real numbers */
-typedef math::realx<base_t> realx_t;
-
-/** LVQ model */
-typedef ml::lvq<realx_t> lvq_t;
-
-#endif  // end of #ifndef model_hxx
+#endif  // end of #ifndef liblvq__io__debug_hxx

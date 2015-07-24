@@ -1,5 +1,5 @@
-#ifndef math__lingebra_hxx
-#define math__lingebra_hxx
+#ifndef liblvq__math__lingebra_hxx
+#define liblvq__math__lingebra_hxx
 
 /**
  *  Linear algebra module
@@ -46,6 +46,7 @@
 #include <stdexcept>
 #include <vector>
 #include <algorithm>
+#include <initializer_list>
 #include <cstdarg>
 
 
@@ -306,4 +307,4 @@ class matrix {
 
 }  // end of namespace math
 
-#endif  // end of #ifndef math__lingebra_hxx
+#endif  // end of #ifndef liblvq__math__lingebra_hxx

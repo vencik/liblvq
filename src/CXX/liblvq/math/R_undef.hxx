@@ -1,5 +1,5 @@
-#ifndef math__R_undef_hxx
-#define math__R_undef_hxx
+#ifndef liblvq__math__R_undef_hxx
+#define liblvq__math__R_undef_hxx
 
 /**
  *  Real numbers with undefined value.
@@ -202,4 +202,4 @@ bool isnan(const realx<base_t> & arg) {
 
 }  // end of namespace math
 
-#endif  // end of #ifndef math__R_undef_hxx
+#endif  // end of #ifndef liblvq__math__R_undef_hxx

@@ -2,9 +2,14 @@
 AM_CXXFLAGS = -g -Wall -Werror
 AM_LDFLAGS  =
 
+# Enable debug messages
+if ENABLE_DEBUG
+AM_CXXFLAGS += -DENABLE_DEBUG
+endif
+
+
 SUBDIRS = \
-    math \
-    ml \
+    liblvq \
     unit_test
 
 
@@ -13,12 +18,17 @@ noinst_HEADERS = \
     config.hxx \
     model.hxx
 
-lib_LTLIBRARIES = \
-    liblvq.la
-
-liblvq_la_SOURCES =
-
-liblvq_la_LIBADD =
+#
+# No shared object is necessary so far
+# Uncomment in case it becomes so
+#lib_LTLIBRARIES = \
+#    liblvq.la
+#
+#liblvq_la_SOURCES =
+#
+#liblvq_la_LIBADD =
+#
+#LDADD = liblvq.la
 
 
 # Executables
@@ -27,11 +37,7 @@ bin_PROGRAMS = \
     lvq_classify
 
 lvq_train_SOURCES = \
-    model.cxx \
     train.cxx
 
 lvq_classify_SOURCES = \
-    model.cxx \
     classify.cxx
-
-LDADD = liblvq.la
