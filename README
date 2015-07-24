@@ -18,6 +18,55 @@ Key features
 * Fine-grained categorisation modes
 
 
+Build and installation
+----------------------
+
+You need C++ compiler with support for C++11.
+Recent enough gcc (4.9) or newer is OK.
+You also need make and GNU autotools (automake and autoconf) and libtool.
+
+On Debian-based systems, the following shoud get the above:
+----
+# apt-get install g++ make automake autoconf libtool git
+----
+
+Clone the project:
+----
+$ git clone https://github.com/vencik/liblvq.git
+----
+
+Build and install
+----
+$ cd liblvq
+$ ./build.sh
+# make install
+----
+
+You may specify your installation prefix using
+----
+$ ./build.sh --prefix <your installation prefix>
+----
+
+The build script runs autogen.sh to create the build environment
+(including creation of configure script).
+Then passes all its parameters to configure script and if configuration
+is succesfull, runs make.
+
+You may get more help on the build configuration by issuing
+----
+$ ./autogen.sh
+$ ./configure --help
+---
+
+Once the configure script is created, you don't need to run build.sh
+nor autogen.sh any more; just the obligatory
+----
+$ ./configure
+$ make
+# make install
+----
+
+
 Modes of operation
 ------------------
 
