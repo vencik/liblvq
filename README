@@ -18,6 +18,13 @@ Key features
 * Fine-grained categorisation modes
 
 
+Bindings
+--------
+
+Python binding is available, see
+https://github.com/vencik/python-liblvq
+
+
 Build and installation
 ----------------------
 
@@ -81,7 +88,7 @@ representant, the greater affinity to the cluster it has.
 "Plain" n-ary classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Finding the best matching cluster.
+Finds the best matching cluster.
 This is the basic classification mode; cluster with representant most
 close to the input is returned.
 However, the LVQ algorithm may be easily modified to provide more
