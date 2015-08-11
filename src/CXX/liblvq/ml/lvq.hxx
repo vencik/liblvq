@@ -52,6 +52,16 @@
 #include <fstream>
 
 
+/** Default convergency window for \c lvq::train */
+#define LIBLVQ__ML__LVQ__TRAIN__CONV_WIN 5
+
+/** Default max. number of diverging windows in a row for \c lvq::train */
+#define LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT 3
+
+/** Default max. number of training loops in total for \c lvq::train */
+#define LIBLVQ__ML__LVQ__TRAIN__MAX_TLC 1000
+
+
 namespace ml {
 
 /**
@@ -172,9 +182,9 @@ class lvq {
     template <class Set>
     void train(
         const Set    & set,
-        const unsigned conv_win    = 5,
-        unsigned       max_div_cnt = 3,
-        const unsigned max_tlc     = 1000)
+        const unsigned conv_win    = LIBLVQ__ML__LVQ__TRAIN__CONV_WIN,
+        unsigned       max_div_cnt = LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT,
+        const unsigned max_tlc     = LIBLVQ__ML__LVQ__TRAIN__MAX_TLC)
     {
         const math::vector<base_t> l(set.size(), 1);  // unit vector
 
