@@ -143,14 +143,20 @@ class vector {
      *
      *  \param  denom  Scalar denominator
      */
-    vector & operator /= (const base_t & denom) { return *this *= 1/denom; }
+    vector & operator /= (const base_t & denom) {
+        static const base_t l = 1;
+        return *this *= (l / denom);
+    }
 
     /**
      *  \brief  Division by scalar
      *
      *  \param  denom  Scalar denominator
      */
-    vector operator / (const base_t & denom) const { return *this * 1/denom; }
+    vector operator / (const base_t & denom) const {
+        static const base_t l = 1;
+        return *this * (l / denom);
+    }
 
     /**
      *  \brief  Scalar multiplication

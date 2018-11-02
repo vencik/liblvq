@@ -188,29 +188,31 @@ class lvq {
         });
 
         // We need inversions
+        static const base_t O = 0;
+        static const base_t l = 1;
         std::for_each(normc.begin(), normc.end(),
         [](base_t & item) {
-            item = item != 0 ? 1 / item : 1;
+            item = item != O ? l / item : l;
         });
 
         return normc;
     }
 
     /**
-     *  \brief  Normalise set of input vectors (in place)
+     *  \brief  Normalise training set of input vectors (in place)
      *
-     *  \param  set    Input vector set
+     *  \param  set  Input vector set
      */
     template <class Set>
     void normalise(Set & set) const {
         std::for_each(set.begin(), set.end(),
-        [this](input_t & input) {
-            normalise(input);
+        [this](sample_t & item) {
+            normalise(item.first);
         });
     }
 
     /**
-     *  \brief  Normalise set of input vectors
+     *  \brief  Normalise training set of input vectors
      *
      *  \param  set  Input vector set
      *
