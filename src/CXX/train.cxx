@@ -151,9 +151,9 @@ static int train(
     lvq_t::statistics stats = lvq.test(test_set);
 
     // Print statistics
-    std::cerr << "F_1      : " << stats.F(1)       << std::endl;
+    std::cerr << "F_1      : " << stats.F(1.0)     << std::endl;
     std::cerr << "F_0.5    : " << stats.F(0.5)     << std::endl;
-    std::cerr << "F_2      : " << stats.F(2)       << std::endl;
+    std::cerr << "F_2      : " << stats.F(2.0)     << std::endl;
     std::cerr << "Accuracy : " << stats.accuracy() << std::endl;
 
     // Print cluster representants

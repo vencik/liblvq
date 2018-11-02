@@ -51,6 +51,7 @@
 #include <string>
 #include <fstream>
 #include <algorithm>
+#include <stdexcept>
 
 
 /** Default convergency window for \c lvq::train */
@@ -689,6 +690,55 @@ class lvq {
         }
 
         /**
+         *  \brief  Precision per class
+         *
+         *  \param  c1ass  Class
+         *
+         *  \return Precision for class \c c1ass
+         */
+        double precision(size_t c1ass) const {
+            if (c1ass >= m_cnts.size())
+                throw std::runtime_error(
+                    "liblvq::lvq::statistics::precision: "
+                    "no such class");
+            return m_cnts[c1ass].precision();
+        }
+
+        /**
+         *  \brief  Recall per class
+         *
+         *  \param  c1ass  Class
+         *
+         *  \return Recall for class \c c1ass
+         */
+        double recall(size_t c1ass) const {
+            if (c1ass >= m_cnts.size())
+                throw std::runtime_error(
+                    "liblvq::lvq::statistics::recall: "
+                    "no such class");
+            return m_cnts[c1ass].recall();
+        }
+
+        /**
+         *  \brief  F_beta score per class
+         *
+         *  \param  beta   Beta parameter
+         *  \param  c1ass  Class
+         *
+         *  \return F_beta score for class \c c1ass
+         */
+        double F(double beta, size_t c1ass) const {
+            if (c1ass >= m_cnts.size())
+                throw std::runtime_error(
+                    "liblvq::lvq::statistics::F: "
+                    "no such class");
+            return m_cnts[c1ass].F(beta * beta);
+        }
+
+        /** F-score (aka F_1 score) per class */
+        inline double F(size_t c1ass) const { return F(1, c1ass); }
+
+        /**
          *  \brief  F_beta score
          *
          *  \param  beta  Beta parameter
@@ -708,7 +758,7 @@ class lvq {
         }
 
         /** F-score (aka F_1 score) */
-        inline double F() const { return F(1); }
+        inline double F() const { return F(1.0); }
 
     };  // end of class statistics
 
