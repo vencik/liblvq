@@ -63,9 +63,13 @@ class vector {
 
     typedef M base_t;  /**< Base numeric type */
 
+    typedef std::vector<base_t>             impl_t;          /**< Impl. type */
+    typedef typename impl_t::iterator       iterator;        /**< Iterator   */
+    typedef typename impl_t::const_iterator const_iterator;  /**< Const iter */
+
     private:
 
-    std::vector<base_t> m_impl;  /**< Implementation */
+    impl_t m_impl;  /**< Implementation */
 
     public:
 
@@ -96,6 +100,18 @@ class vector {
 
     /** Access operator (const) */
     const base_t & operator [] (size_t i) const { return m_impl[i]; }
+
+    /** Begin iterator */
+    iterator begin() { return m_impl.begin(); }
+
+    /** End iterator */
+    iterator end() { return m_impl.end(); }
+
+    /** Const. begin iterator */
+    const_iterator begin() const { return m_impl.begin(); }
+
+    /** Const. end iterator */
+    const_iterator end() const { return m_impl.end(); }
 
     /**
      *  \brief  Multiplication by scalar (in place)

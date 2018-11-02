@@ -50,6 +50,7 @@
 #include <cassert>
 #include <string>
 #include <fstream>
+#include <algorithm>
 
 
 /** Default convergency window for \c lvq::train */
@@ -85,7 +86,8 @@ class lvq {
 
     private:
 
-    theta_t m_theta;  /**< Model parameters */
+    input_t m_normc;  /**< Input normalisation coefficients */
+    theta_t m_theta;  /**< Model parameters                 */
 
     public:
 
@@ -96,8 +98,25 @@ class lvq {
      *  \param  clusters   Cluster count
      */
     lvq(size_t dimension, size_t clusters):
+        m_normc(dimension, 1),
         m_theta(clusters, dimension)
     {}
+
+    /**
+     *  \brief  Input normalisation coefficients setter
+     *
+     *  BEWARE: Changing input normalisation coefficients will break the model.
+     *
+     *  \param  normc  Normalisation coefficients
+     */
+    void normc_set(const input_t & normc) { m_normc = normc; }
+
+    /**
+     *  \brief  Normalisation coefficients getter
+     *
+     *  \return Coefficients
+     */
+    const input_t & normc_get() const { return m_normc; }
 
     /**
      *  \brief  Cluster representant setter
@@ -119,7 +138,100 @@ class lvq {
     const input_t & get(size_t cluster) const { return m_theta[cluster]; }
 
     /**
+     *  \brief  Normalise input vector (in place)
+     *
+     *  \param  input  Input vector
+     */
+    void normalise(input_t & input) const {
+        size_t ix = 0;
+        std::for_each(input.begin(), input.end(),
+        [&ix, this](base_t & item) {
+            item *= m_normc[ix++];
+        });
+    }
+
+    /**
+     *  \brief  Normalise input vector
+     *
+     *  \param  input  Input vector
+     *
+     *  \return Normalised input vector
+     */
+    input_t normalise(const input_t & input) const {
+        input_t ninput = input;
+        normalise(ninput);
+        return ninput;
+    }
+
+    /**
+     *  \brief  Find normalisation coefficients for an input vector training set
+     *
+     *  \param  set  Input vector set (must not be empty)
+     *
+     *  \return Normalisation coefficients vector
+     */
+    template <class Set>
+    static input_t norm_coefficients(const Set & set) {
+        input_t normc(set.begin()->first.rank(), 0);
+
+        base_t n = 0;
+        std::for_each(set.begin(), set.end(),
+        [&normc, &n](const sample_t & item) {
+            const input_t & input = item.first;
+
+            base_t n_div_n_plus_1 = n;
+            n += 1;
+            n_div_n_plus_1 /= n;
+
+            normc *= n_div_n_plus_1;
+            normc += input / n;
+        });
+
+        // We need inversions
+        std::for_each(normc.begin(), normc.end(),
+        [](base_t & item) {
+            item = item != 0 ? 1 / item : 1;
+        });
+
+        return normc;
+    }
+
+    /**
+     *  \brief  Normalise set of input vectors (in place)
+     *
+     *  \param  set    Input vector set
+     */
+    template <class Set>
+    void normalise(Set & set) const {
+        std::for_each(set.begin(), set.end(),
+        [this](input_t & input) {
+            normalise(input);
+        });
+    }
+
+    /**
+     *  \brief  Normalise set of input vectors
+     *
+     *  \param  set  Input vector set
+     *
+     *  \return Normalised set of input vectors
+     */
+    template <class Set>
+    Set normalise(const Set & set) const {
+        Set nset = set;
+        normalise(nset);
+        return nset;
+    }
+
+    /**
      *  \brief  Training step
+     *
+     *  NOTE: The training step should work with input with normalised items.
+     *  Not normalising items typically means poorer results as noticeable
+     *  differences in value magnitudes in different dimensions mean different
+     *  contribution rates to vector distances.
+     *  Thus, dimensions in which the values are comparatively much smaller
+     *  (in absolute value) will have much smaller distinguishing effect.
      *
      *  \param  input    Training vector
      *  \param  cluster  Required cluster
@@ -164,9 +276,9 @@ class lvq {
     }
 
     /**
-     *  \brief  Train set
+     *  \brief  Training
      *
-     *  Train set of samples.
+     *  Train on set of samples.
      *
      *  The function uses a heuristic auto-adaptation of learning factor.
      *  Initially, the factor is set to 1 (i.e. the 1st ever training sample
@@ -177,18 +289,21 @@ class lvq {
      *  Training stops if an acceptable average difference norm is achieved
      *  or if max. training loop count is reached.
      *
-     *  \param  set          Training set
+     *  \param  train_set    Training set
      *  \param  conv_win     Convergency window size
      *  \param  max_div_cnt  Max. number of diverging windows
      *  \param  max_tlc      Max. number of training loops in total
      */
     template <class Set>
     void train(
-        const Set    & set,
+        const Set    & train_set,
         const unsigned conv_win    = LIBLVQ__ML__LVQ__TRAIN__CONV_WIN,
         unsigned       max_div_cnt = LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT,
         const unsigned max_tlc     = LIBLVQ__ML__LVQ__TRAIN__MAX_TLC)
     {
+        m_normc = norm_coefficients(train_set);
+        const Set set = normalise(train_set);
+
         const math::vector<base_t> l(set.size(), 1);  // unit vector
 
         math::vector<base_t> norm2(set.size());  // diff norm squared
@@ -286,9 +401,10 @@ class lvq {
 
         size_t cluster = 0;
 
+        const auto ninput = normalise(input);
         sumd2 = 0;
         for (size_t i = 0; i < m_theta.row_cnt(); ++i) {
-            auto diff = input - m_theta[i];
+            auto diff = ninput - m_theta[i];
 
             // Fill missing differences in
             for (size_t j = 0; j < diff.rank(); ++j)
