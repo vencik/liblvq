@@ -45,20 +45,25 @@
 
 #include <list>
 #include <iostream>
+#include <fstream>
 #include <limits>
 #include <exception>
 #include <stdexcept>
 
 
+/** Training/testing set */
+typedef std::list<lvq_t::sample_t> tset_t;
+
+
 /**
- *  \brief  Read training vector
+ *  \brief  Read training/testing sample
  *
  *  \param  in    Input
  *  \param  rank  Vector rank
  *
- *  \return Training vector & cluster number
+ *  \return Training/testing sample
  */
-static std::pair<lvq_t::input_t, size_t> read_train_set_item(
+static lvq_t::sample_t read_sample(
     std::istream & in,
     size_t         rank)
 {
@@ -70,54 +75,89 @@ static std::pair<lvq_t::input_t, size_t> read_train_set_item(
     lvq_t::input_t vector(rank);
     in >> vector;
 
-    return std::pair<lvq_t::input_t, size_t>(vector, cluster);
+    return lvq_t::sample_t(vector, cluster);
+}
+
+
+/**
+ *  \brief  Read training/testing set
+ *
+ *  Reads sample set; if \c cluster_cnt is nt \c NULL, it stores
+ *  the number of clusters in it.
+ *
+ *  \param  in           Input
+ *  \param  rank         Vector rank
+ *  \param  cluster_cnt  Collected cluster count (optional)
+ *
+ *  \return Training/testing set
+ */
+static tset_t read_tset(
+    std::istream & in,
+    size_t         rank,
+    size_t       * cluster_cnt = NULL)
+{
+    if (NULL != cluster_cnt) *cluster_cnt = 0;
+
+    tset_t tset;
+
+    while (!in.eof() && EOF != in.peek()) {
+        auto sample = read_sample(in, rank);
+
+        // Ignore everything till EOL
+        in.ignore(
+            std::numeric_limits<std::streamsize>::max(),
+            '\n');
+
+        //std::cerr << sample.second << ": " << sample.first << std::endl;
+
+        if (NULL != cluster_cnt && *cluster_cnt < sample.second + 1)
+            *cluster_cnt = sample.second + 1;
+
+        tset.push_back(sample);
+    }
+
+    return tset;
 }
 
 
 /**
  *  \brief  Train LVQ model
  *
- *  \param  input_rank  Input vector rank
+ *  \param  train_src  Training set source stream
+ *  \param  test_src   Testing set source stream
+ *  \param  rank       Vector rank
  *
  *  \return Exit code
  */
 static int train(
-    size_t input_rank)
+    std::istream & train_src,
+    std::istream & test_src,
+    size_t         rank)
 {
-    size_t clusters = 0;  // cluster count
+    size_t cluster_cnt;  // cluster count
 
-    // Read raining set
-    std::list<std::pair<lvq_t::input_t, size_t> > train_set;
+    // Read training set
+    auto train_set = read_tset(train_src, rank, &cluster_cnt);
 
-    while (!std::cin.eof() && EOF != std::cin.peek()) {
-        auto pair = read_train_set_item(std::cin, input_rank);
+    lvq_t lvq(rank, cluster_cnt);
 
-        // Ignore everything till EOL
-        std::cin.ignore(
-            std::numeric_limits<std::streamsize>::max(),
-            '\n');
-
-        std::cerr
-            << pair.second << ": " << pair.first << std::endl;
-
-        if (clusters < pair.second + 1)
-            clusters = pair.second + 1;
-
-        train_set.push_back(pair);
-    }
-
-    lvq_t lvq(input_rank, clusters);
-
-    // Train training set
+    // Train the model
     lvq.train(train_set);
 
-    // Check learning rate
-    float lrate = lvq.learn_rate(train_set);
+    // Read testing set
+    auto test_set = read_tset(test_src, rank);
 
-    std::cout << "Learn rate: " << lrate << std::endl;
+    // Test the model
+    lvq_t::statistics stats = lvq.test(test_set);
+
+    // Print statistics
+    std::cerr << "F_1      : " << stats.F(1)       << std::endl;
+    std::cerr << "F_0.5    : " << stats.F(0.5)     << std::endl;
+    std::cerr << "F_2      : " << stats.F(2)       << std::endl;
+    std::cerr << "Accuracy : " << stats.accuracy() << std::endl;
 
     // Print cluster representants
-    for (size_t i = 0; i < clusters; ++i)
+    for (size_t i = 0; i < cluster_cnt; ++i)
         std::cout << lvq.get(i) << std::endl;
 
     return 0;
@@ -132,16 +172,31 @@ static int main_impl(int argc, char * const argv[]) {
         // Read command line arguments
         if (argc < 2) {
             std::cerr
-                << "Usage: " << argv[0] << " <input_rank>" << std::endl;
-
+                << "Usage: " << argv[0]
+                << " <rank> [<training_set>] [<testing_set>]"
+                << std::endl;
             break;
+        }
+
+        size_t rank = ::atoi(argv[1]);
+
+        std::istream  * train_src = &std::cin;
+        std::ifstream   train_set;
+        if (argc > 2) {
+            train_set.open(argv[2]);
+            train_src = &train_set;
+        }
+
+        std::istream  * test_src = &std::cin;
+        std::ifstream   test_set;
+        if (argc > 3) {
+            test_set.open(argv[3]);
+            test_src = &test_set;
         }
 
         exit_code = 64;  // pessimistic assumption
 
-        size_t input_rank = ::atoi(argv[1]);
-
-        exit_code = train(input_rank);
+        exit_code = train(*train_src, *test_src, rank);
 
     } while (0);  // end of pragmatic loop
 

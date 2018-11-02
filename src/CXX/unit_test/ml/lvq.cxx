@@ -248,13 +248,14 @@ static int test_lvq() {
 
     lvq.train(inputs);
 
-    float lrate = lvq.learn_rate(inputs);
+    const auto stats = lvq.test(inputs);
 
-    std::cout << "Learn rate: " << lrate << std::endl;
+    std::cout << "Accuracy: " << stats.accuracy() << std::endl;
+    std::cout << "F_1: "      << stats.F()        << std::endl;
 
     std::cout << "Test END" << std::endl;
 
-    return lrate != 1.0 ? 1 : 0;
+    return stats.accuracy() != 1.0 ? 1 : 0;
 }
 
 

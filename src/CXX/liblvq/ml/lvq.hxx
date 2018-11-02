@@ -80,6 +80,9 @@ class lvq {
 
     typedef std::pair<size_t, double> cw_t;  /**< Cluster & its weight */
 
+    /** Training/testing sample (together with its annotation) */
+    typedef std::pair<input_t, size_t> sample_t;
+
     private:
 
     theta_t m_theta;  /**< Model parameters */
@@ -163,7 +166,7 @@ class lvq {
     /**
      *  \brief  Train set
      *
-     *  Train set of classified samples.
+     *  Train set of samples.
      *
      *  The function uses a heuristic auto-adaptation of learning factor.
      *  Initially, the factor is set to 1 (i.e. the 1st ever training sample
@@ -201,14 +204,14 @@ class lvq {
             size_t i = 0;
 
             std::for_each(set.begin(), set.end(),
-            [&, this](const std::pair<input_t, size_t> & item) {
+            [&, this](const sample_t & item) {
                 auto & n2      = norm2[i];
-                auto & sample  = item.first;
+                auto & vector  = item.first;
                 auto   cluster = item.second;
 
-                n2 = train1(sample, cluster, lf);
+                n2 = train1(vector, cluster, lf);
 
-                DEBUG_MSG(sample <<
+                DEBUG_MSG(vector <<
                     ": f == " << lf <<
                     ", |delta|^2 == " << n2);
 
@@ -220,12 +223,12 @@ class lvq {
                 // Compute normalised average norm^2 difference
                 i = 0;
                 std::for_each(set.begin(), set.end(),
-                [&, this](const std::pair<input_t, size_t> & item) {
+                [&, this](const sample_t & item) {
                     auto & n2      = norm2[i];
-                    auto & sample  = item.first;
+                    auto & vector  = item.first;
                     auto   cluster = item.second;
 
-                    const auto diff = sample - m_theta[cluster];
+                    const auto diff = vector - m_theta[cluster];
                     n2 = diff * diff;
 
                     ++i;
@@ -485,31 +488,138 @@ class lvq {
     }
 
     /**
-     *  \brief  Compute learn rate of a training set
+     *  \brief  Test statistics
+     */
+    class statistics {
+        private:
+
+        /** Statistics counters */
+        struct counters {
+            size_t tp;   /**< True Positive  */
+            size_t fp;   /**< False Positive */
+            size_t cnt;  /**< Total count    */
+
+            /** Constructor */
+            counters(): tp(0), fp(0), cnt(0) {}
+
+            /** Precision */
+            double precision() const {
+                return (double)tp / ((double)tp + (double)fp);
+            }
+
+            /** Recall */
+            double recall() const {
+                return (double)tp / (double)cnt;
+            }
+
+            /**
+             *  \brief  F_beta score
+             *
+             *  \param  bb  Beta^2
+             */
+            double F(double bb) const {
+                const double p = precision();
+                const double r = recall();
+
+                return (1 + bb) * (p * r) / (bb * p + r);
+            }
+
+        };  // end of struct counters
+
+        std::vector<counters> m_cnts;     /**< Counters per class      */
+        size_t                m_correct;  /**< Correct classifications */
+        size_t                m_total;    /**< Total count             */
+
+        public:
+
+        /**
+         *  \brief  Constructor
+         *
+         *  \param  ccnt  Number of classes
+         */
+        statistics(size_t ccnt):
+            m_cnts(ccnt),
+            m_correct(0),
+            m_total(0)
+        {}
+
+        /**
+         *  \brief  Record one classification result
+         *
+         *  \param  cclass  The correct class
+         *  \param  dclass  The detected class
+         */
+        void record(size_t cclass, size_t dclass) {
+            // Correct classification
+            if (cclass == dclass) {
+                ++m_correct;
+                ++m_cnts[cclass].tp;
+            }
+
+            // Incorrect classification
+            else {
+                ++m_cnts[dclass].fp;
+            }
+
+            ++m_cnts[cclass].cnt;
+            ++m_total;
+        }
+
+        /** Accuracy */
+        inline double accuracy() const {
+            return (double)m_correct / (double)m_total;
+        }
+
+        /**
+         *  \brief  F_beta score
+         *
+         *  \param  beta  Beta parameter
+         *
+         *  \return Weighed average of per-class F_beta scores
+         */
+        double F(double beta) const {
+            const double bb  = beta * beta;
+            double       sum = 0.0;
+
+            std::for_each(m_cnts.begin(), m_cnts.end(),
+            [bb, &sum](const counters & cnts) {
+                sum += cnts.cnt * cnts.F(bb);
+            });
+
+            return sum / (double)m_total;
+        }
+
+        /** F-score (aka F_1 score) */
+        inline double F() const { return F(1); }
+
+    };  // end of class statistics
+
+    /**
+     *  \brief  Test model
      *
-     *  \param  set  Training set
+     *  \param  set  Testing set
      *
-     *  \return Learn rate
+     *  \return Test statistics
      */
     template <class Set>
-    float learn_rate(const Set & set) {
-        float learned_cnt = 0;
+    statistics test(const Set & set) {
+        statistics stats(m_theta.row_cnt());
 
         std::for_each(set.begin(), set.end(),
-        [this, &learned_cnt](const std::pair<input_t, size_t> & item) {
-            const auto & sample  = item.first;
+        [this, &stats](const sample_t & item) {
+            const auto & vector  = item.first;
             size_t       cluster = item.second;
 
-            size_t lvq_cluster = classify(sample);
+            size_t lvq_cluster = classify(vector);
 
-            DEBUG_MSG(sample <<
+            DEBUG_MSG(vector <<
                 ": class " << cluster <<
                 ", got class " << lvq_cluster);
 
-            if (lvq_cluster == cluster) ++learned_cnt;
+            stats.record(cluster, lvq_cluster);
         });
 
-        return learned_cnt / set.size();
+        return stats;
     }
 
     /**

@@ -72,7 +72,7 @@ class realx {
         base_t       & larg,
         const base_t & rarg)
     {
-        larg = isnan(larg) || isnan(rarg) ? NAN : bin_op(larg, rarg);
+        larg = std::isnan(larg) || std::isnan(rarg) ? NAN : bin_op(larg, rarg);
     }
 
     public:
@@ -86,16 +86,16 @@ class realx {
     realx(base_t val): m_impl(val) {}
 
     /** Defined check */
-    bool is_defined() const { return !isnan(m_impl); }
+    bool is_defined() const { return !std::isnan(m_impl); }
 
     /** Base type value getter */
     operator base_t () const { return m_impl; }
 
     /** Comparison */
     bool operator == (const realx & rarg) const {
-        if (isnan(m_impl)) return isnan(rarg.m_impl);
+        if (std::isnan(m_impl)) return std::isnan(rarg.m_impl);
 
-        return isnan(rarg.m_impl) ? false : m_impl == rarg.m_impl;
+        return std::isnan(rarg.m_impl) ? false : m_impl == rarg.m_impl;
     }
 
     /** Comparison with base type */
