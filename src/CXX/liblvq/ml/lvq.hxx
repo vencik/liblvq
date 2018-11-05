@@ -802,6 +802,7 @@ class lvq {
         fs
             << m_theta[0].rank() << ' '
             << m_theta.row_cnt() << std::endl
+            << m_normc << std::endl
             << m_theta;
 
         fs.close();
@@ -824,7 +825,7 @@ class lvq {
 
         lvq inst(dimension, clusters);
 
-        fs >> inst.m_theta;
+        fs >> inst.m_normc >> inst.m_theta;
 
         fs.close();
 

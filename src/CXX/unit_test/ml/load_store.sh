@@ -5,6 +5,7 @@ out_file=load_store.$$.out
 
 cat >> "$in_file" << HERE
 3 6
+[1 1 1]
 [1.1 0.1 0.1]
 [0.2 1.2 0.2]
 [0.3 0.3 1.3]
