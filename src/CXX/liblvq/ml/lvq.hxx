@@ -177,15 +177,19 @@ class lvq {
 
         base_t n = 0;
         std::for_each(set.begin(), set.end(),
-        [&normc, &n](const sample_t & item) {
-            const input_t & input = item.first;
+        [&normc, &n](const sample_t & input_class) {
+            input_t abs_input = input_class.first;
+            std::for_each(abs_input.begin(), abs_input.end(),
+            [](base_t & item) {
+                if (0 > item) item = -item;
+            });
 
             base_t n_div_n_plus_1 = n;
             n += 1;
             n_div_n_plus_1 /= n;
 
             normc *= n_div_n_plus_1;
-            normc += input / n;
+            normc += abs_input / n;
         });
 
         // We need inversions
