@@ -52,6 +52,7 @@
 #include <fstream>
 #include <algorithm>
 #include <stdexcept>
+#include <list>
 
 
 /** Default convergency window for \c lvq::train */
@@ -61,7 +62,7 @@
 #define LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT 3
 
 /** Default max. number of training loops in total for \c lvq::train */
-#define LIBLVQ__ML__LVQ__TRAIN__MAX_TLC 1000
+#define LIBLVQ__ML__LVQ__TRAIN__MAX_TLC 3000
 
 
 namespace ml {
@@ -82,8 +83,43 @@ class lvq {
 
     typedef std::pair<size_t, double> cw_t;  /**< Cluster & its weight */
 
-    /** Training/testing sample (together with its annotation) */
+    /** Classifier training/test sample */
     typedef std::pair<input_t, size_t> sample_t;
+
+    class tset_classifier: public std::list<sample_t> {
+        public:
+
+        typedef sample_t item_t;
+
+        static const input_t & vector(const sample_t & sample) {
+            return sample.first;
+        }
+
+        static const size_t & cluster(const sample_t & sample) {
+            return sample.second;
+        }
+
+        static input_t & vector(sample_t & sample) {
+            return sample.first;
+        }
+
+        static size_t & cluster(sample_t & sample) {
+            return sample.second;
+        }
+
+    };  // end of tset_classifier
+
+    /** Clustering training/test set */
+    class tset_clustering: public std::list<input_t> {
+        public:
+
+        typedef input_t item_t;
+
+        static const input_t & vector(const input_t & vector) { return vector; }
+
+        static input_t & vector(input_t & vector) { return vector; }
+
+    };  // end of class tset_clustering
 
     private:
 
@@ -139,6 +175,34 @@ class lvq {
     const input_t & get(size_t cluster) const { return m_theta[cluster]; }
 
     /**
+     *  \brief  Random cluster representant setter
+     *
+     *  \param cluster  Cluster
+     *
+     *  \return Current cluster representant
+     */
+    const input_t & set_random(size_t cluster) {
+        std::for_each(m_theta[cluster].begin(), m_theta[cluster].end(),
+        [](base_t & item) {
+            item = base_t(-1, 1);
+        });
+
+        return m_theta[cluster];
+    }
+
+    /**
+     *  \brief  Random cluster reresentatnts setter
+     *
+     *  \return Current cluster representants
+     */
+    const theta_t & set_random() {
+        for (size_t cluster = 0; cluster < m_theta.row_cnt(); ++cluster)
+            set_random(cluster);
+
+        return m_theta;
+    }
+
+    /**
      *  \brief  Normalise input vector (in place)
      *
      *  \param  input  Input vector
@@ -173,12 +237,12 @@ class lvq {
      */
     template <class Set>
     static input_t norm_coefficients(const Set & set) {
-        input_t normc(set.begin()->first.rank(), 0);
+        input_t normc(Set::vector(*set.begin()).rank(), 0);
 
         base_t n = 0;
         std::for_each(set.begin(), set.end(),
-        [&normc, &n](const sample_t & input_class) {
-            input_t abs_input = input_class.first;
+        [&normc, &n](const typename Set::item_t & item) {
+            input_t abs_input = Set::vector(item);
             std::for_each(abs_input.begin(), abs_input.end(),
             [](base_t & item) {
                 if (0 > item) item = -item;
@@ -211,8 +275,8 @@ class lvq {
     template <class Set>
     void normalise(Set & set) const {
         std::for_each(set.begin(), set.end(),
-        [this](sample_t & item) {
-            normalise(item.first);
+        [this](typename Set::item_t & item) {
+            normalise(Set::vector(item));
         });
     }
 
@@ -231,7 +295,23 @@ class lvq {
     }
 
     /**
-     *  \brief  Training step
+     *  \brief  Compute vector difference
+     *
+     *  \param  v1  Vector
+     *  \param  v2  Vector
+     *
+     *  \return \c v1 - \c v2, undefined values are replaced by 0
+     */
+    static input_t vdiff(const input_t & v1, const input_t & v2) {
+        auto diff = v1 - v2;
+        for (size_t i = 0; i < diff.rank(); ++i)
+            if (isnan(diff[i])) diff[i] = 0;
+
+        return diff;
+    }
+
+    /**
+     *  \brief  Training step (supervised training)
      *
      *  NOTE: The training step should work with input with normalised items.
      *  Not normalising items typically means poorer results as noticeable
@@ -246,40 +326,58 @@ class lvq {
      *
      *  \return Difference vector norm squared
      */
-    base_t train1(
+    base_t train1_supervised(
         const input_t & input,
         size_t          cluster,
         const base_t  & lfactor)
     {
-        auto & theta = m_theta[cluster];
-        auto   diff  = input - theta;
-        auto   fdiff = lfactor * diff;
-
-        // Fix undefined values
-        for (size_t i = 0; i < diff.rank(); ++i) {
-            // diff is undefined if at least one of input or theta are undefined
-            if (isnan(diff[i])) {
-                // theta is undefined
-                if (isnan(theta[i])) {
-                    // input is defined => set theta accordingly (avoid factor)
-                    if (!isnan(input[i])) {
-                        theta[i] = 0;
-                        fdiff[i] = input[i];
-                    }
-                }
-
-                // theta is defined => input is undefined
-                else
-                    fdiff[i] = 0;  // don't change theta
-
-                diff[i] = 0;  // make sure norm is defined
-            }
-        }
-
-        m_theta[cluster] += fdiff;
+        auto diff = vdiff(input, m_theta[cluster]);
+        m_theta[cluster] += lfactor * diff;
 
         diff *= (1 - lfactor);
         return diff * diff;  // result diff. norm squared
+    }
+
+    /**
+     *  \brief  Training step (unsupervised training)
+     *
+     *  Cluster is chosen based on minimal difference to existing one.
+     *
+     *  NOTE: The training step should work with input with normalised items.
+     *  Not normalising items typically means poorer results as noticeable
+     *  differences in value magnitudes in different dimensions mean different
+     *  contribution rates to vector distances.
+     *  Thus, dimensions in which the values are comparatively much smaller
+     *  (in absolute value) will have much smaller distinguishing effect.
+     *
+     *  \param  input    Training vector
+     *  \param  lfactor  Learning factor
+     *
+     *  \return Difference vector norm squared
+     */
+    base_t train1_unsupervised(
+        const input_t & input,
+        const base_t  & lfactor)
+    {
+        size_t min_cluster = 0;
+        auto   min_diff    = vdiff(input, m_theta[min_cluster]);
+        auto   min_norm2   = min_diff * min_diff;
+
+        for (size_t cluster = 1; cluster < m_theta.row_cnt(); ++cluster) {
+            const auto diff  = vdiff(input, m_theta[cluster]);
+            const auto norm2 = diff * diff;
+
+            if (norm2 < min_norm2) {
+                min_cluster = cluster;
+                min_diff    = diff;
+                min_norm2   = norm2;
+            }
+        }
+
+        m_theta[min_cluster] += lfactor * min_diff;
+
+        min_diff *= (1 - lfactor);
+        return min_diff * min_diff;  // result diff. norm squared
     }
 
     /**
@@ -301,59 +399,55 @@ class lvq {
      *  \param  max_div_cnt  Max. number of diverging windows
      *  \param  max_tlc      Max. number of training loops in total
      */
-    template <class Set>
-    void train(
-        const Set    & train_set,
+    void train_supervised(
+        const tset_classifier & train_set,
         const unsigned conv_win    = LIBLVQ__ML__LVQ__TRAIN__CONV_WIN,
         unsigned       max_div_cnt = LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT,
         const unsigned max_tlc     = LIBLVQ__ML__LVQ__TRAIN__MAX_TLC)
     {
         m_normc = norm_coefficients(train_set);
-        const Set set = normalise(train_set);
+        const tset_classifier set = normalise(train_set);
 
         const math::vector<base_t> l(set.size(), 1);  // unit vector
 
         math::vector<base_t> norm2(set.size());  // diff norm squared
+        size_t norm2_ix;
 
         unsigned conv_win_i = 0;      // convergency window index
         unsigned div_cnt    = 0;      // continuous divergency counter
-        base_t andn2        = 0;      // avg normalised diff norm squared
-        base_t lf           = 0.999;  // learning factor
+        base_t   andn2      = 0;      // avg normalised diff norm squared
+        base_t   lf         = 0.999;  // learning factor
 
         for (unsigned loop = 1; loop <= max_tlc; ++loop) {
-            DEBUG_MSG("ml::lvq::train: loop " << loop);
+            DEBUG_MSG("ml::lvq::train_supervides: loop " << loop);
 
-            size_t i = 0;
-
+            norm2_ix = 0;
             std::for_each(set.begin(), set.end(),
             [&, this](const sample_t & item) {
-                auto & n2      = norm2[i];
-                auto & vector  = item.first;
-                auto   cluster = item.second;
+                auto & n2      = norm2[norm2_ix++];
+                auto & vector  = tset_classifier::vector(item);
+                auto   cluster = tset_classifier::cluster(item);
 
-                n2 = train1(vector, cluster, lf);
+                n2 = train1_supervised(vector, cluster, lf);
 
                 DEBUG_MSG(vector <<
                     ": f == " << lf <<
                     ", |delta|^2 == " << n2);
-
-                ++i;
             });
+
 
             // Convergency window is full
             if (conv_win == ++conv_win_i) {
                 // Compute normalised average norm^2 difference
-                i = 0;
+                norm2_ix = 0;
                 std::for_each(set.begin(), set.end(),
                 [&, this](const sample_t & item) {
-                    auto & n2      = norm2[i];
-                    auto & vector  = item.first;
-                    auto   cluster = item.second;
+                    auto & n2      = norm2[norm2_ix++];
+                    auto & vector  = tset_classifier::vector(item);
+                    auto   cluster = tset_classifier::cluster(item);
 
-                    const auto diff = vector - m_theta[cluster];
+                    const auto diff = vdiff(vector, m_theta[cluster]);
                     n2 = diff * diff;
-
-                    ++i;
                 });
 
                 base_t new_andn2 = norm2 * l;
@@ -376,13 +470,114 @@ class lvq {
                 // Convergency
                 else {
                     DEBUG_MSG("CONVERGENCY");
-
                     div_cnt = 0;
                 }
 
                 // Store normalised average norm^2 difference
-                andn2 = new_andn2;
+                andn2      = new_andn2;
+                conv_win_i = 0;
+            }
+        }
+    }
 
+    /**
+     *  \brief  Unsupervised training
+     *
+     *  Train on set of vectors.
+     *
+     *  The function uses a heuristic auto-adaptation of learning factor.
+     *  Initially, the factor is set to 1 (i.e. the 1st ever training sample
+     *  is used directly as the cluster representant.
+     *  The lower the sample/cluster representant difference norm squared
+     *  gets, the lower the learning factor is set.
+     *
+     *  Training stops if an acceptable average difference norm is achieved
+     *  or if max. training loop count is reached.
+     *
+     *  \param  train_set    Training set
+     *  \param  conv_win     Convergency window size
+     *  \param  max_div_cnt  Max. number of diverging windows
+     *  \param  max_tlc      Max. number of training loops in total
+     */
+    void train_unsupervised(
+        const tset_clustering & train_set,
+        const unsigned conv_win    = LIBLVQ__ML__LVQ__TRAIN__CONV_WIN,
+        unsigned       max_div_cnt = LIBLVQ__ML__LVQ__TRAIN__MAX_DIV_CNT,
+        const unsigned max_tlc     = LIBLVQ__ML__LVQ__TRAIN__MAX_TLC)
+    {
+        m_normc = norm_coefficients(train_set);
+        const tset_clustering set = normalise(train_set);
+
+        const math::vector<base_t> l(set.size(), 1);  // unit vector
+
+        math::vector<base_t> norm2(set.size());  // diff norm squared
+        size_t norm2_ix;
+
+        unsigned conv_win_i = 0;      // convergency window index
+        unsigned div_cnt    = 0;      // continuous divergency counter
+        base_t   andn2      = 0;      // avg normalised diff norm squared
+        base_t   lf         = 0.999;  // learning factor
+
+        for (unsigned loop = 1; loop <= max_tlc; ++loop) {
+            DEBUG_MSG("ml::lvq::train_unsupervised: loop " << loop);
+
+            norm2_ix = 0;
+            std::for_each(set.begin(), set.end(),
+            [&, this](const input_t & vector) {
+                auto & n2 = norm2[norm2_ix++];
+
+                n2 = train1_unsupervised(vector, lf);
+
+                DEBUG_MSG(vector <<
+                    ": f == " << lf <<
+                    ", |delta|^2 == " << n2);
+            });
+
+            // Convergency window is full
+            if (conv_win == ++conv_win_i) {
+                // Compute normalised average norm^2 difference
+                norm2_ix = 0;
+                std::for_each(set.begin(), set.end(),
+                [&, this](const input_t & vector) {
+                    auto & n2 = norm2[norm2_ix++];
+
+                    auto min_diff  = vdiff(vector, m_theta[0]);
+                    auto min_diff2 = min_diff * min_diff;
+                    for (size_t i = 1; i < m_theta.row_cnt(); ++i) {
+                        const auto diff  = vdiff(vector, m_theta[i]);
+                        const auto diff2 = diff * diff;
+
+                        if (min_diff2 < diff2) min_diff2 = diff2;
+                    }
+
+                    n2 = min_diff2;
+                });
+
+                base_t new_andn2 = norm2 * l;
+                norm2 /= new_andn2;
+                new_andn2 = (norm2 * l) / (base_t)set.size();
+
+                DEBUG_MSG("Normalised delta norm^2 == " << norm2);
+                DEBUG_MSG("Avg normalised |delta norm^2| == " << new_andn2);
+
+                // Divergency
+                if (new_andn2 >= andn2) {
+                    DEBUG_MSG("Divergency");
+
+                    if (++div_cnt >= max_div_cnt)
+                        break;  // diverged for too long
+
+                    lf /= 2;
+                }
+
+                // Convergency
+                else {
+                    DEBUG_MSG("CONVERGENCY");
+                    div_cnt = 0;
+                }
+
+                // Store normalised average norm^2 difference
+                andn2      = new_andn2;
                 conv_win_i = 0;
             }
         }
@@ -411,13 +606,7 @@ class lvq {
         const auto ninput = normalise(input);
         sumd2 = 0;
         for (size_t i = 0; i < m_theta.row_cnt(); ++i) {
-            auto diff = ninput - m_theta[i];
-
-            // Fill missing differences in
-            for (size_t j = 0; j < diff.rank(); ++j)
-                if (isnan(diff[j]))
-                    diff[j] = 0;  // optimistic approach
-
+            auto diff = vdiff(ninput, m_theta[i]);
             dist2[i]  = diff * diff;
             sumd2    += dist2[i];
 
@@ -767,20 +956,19 @@ class lvq {
     };  // end of class statistics
 
     /**
-     *  \brief  Test model
+     *  \brief  Test classifier
      *
-     *  \param  set  Testing set
+     *  \param  set  Test set
      *
      *  \return Test statistics
      */
-    template <class Set>
-    statistics test(const Set & set) {
+    statistics test_classifier(const tset_classifier & set) {
         statistics stats(m_theta.row_cnt());
 
         std::for_each(set.begin(), set.end(),
         [this, &stats](const sample_t & item) {
-            const auto & vector  = item.first;
-            size_t       cluster = item.second;
+            const auto & vector  = tset_classifier::vector(item);
+            size_t       cluster = tset_classifier::cluster(item);
 
             size_t lvq_cluster = classify(vector);
 
@@ -789,6 +977,28 @@ class lvq {
                 ", got class " << lvq_cluster);
 
             stats.record(cluster, lvq_cluster);
+        });
+
+        return stats;
+    }
+
+    /**
+     *  \brief  Test clustering
+     *
+     *  \param  set  Test set
+     *
+     *  \return Test statistics
+     */
+    statistics test_clustering(const tset_clustering & set) {
+        statistics stats(m_theta.row_cnt());
+
+        std::for_each(set.begin(), set.end(),
+        [this, &stats](const input_t & vector) {
+            size_t lvq_cluster = classify(vector);
+
+            DEBUG_MSG(vector << ", got class " << lvq_cluster);
+
+            stats.record(lvq_cluster, lvq_cluster);
         });
 
         return stats;

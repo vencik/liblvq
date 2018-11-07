@@ -44,9 +44,14 @@
  */
 
 #include <cmath>
+#include <cstdlib>
 
 #ifndef NAN
 #error "NAN is not defined"
+#endif
+
+#ifndef RAND_MAX
+#error "RAND_MAX is not defined"
 #endif
 
 
@@ -75,6 +80,11 @@ class realx {
         larg = std::isnan(larg) || std::isnan(rarg) ? NAN : bin_op(larg, rarg);
     }
 
+    static base_t random(base_t min, base_t max) {
+        base_t x = (base_t)std::rand() / RAND_MAX;
+        return min + x * (max - min);
+    }
+
     public:
 
     static const realx undef;  // Undefined value
@@ -84,6 +94,9 @@ class realx {
 
     /** Constructor */
     realx(base_t val): m_impl(val) {}
+
+    /** Constructor (random value from a range) */
+    realx(base_t min, base_t max): m_impl(random(min, max)) {}
 
     /** Defined check */
     bool is_defined() const { return !std::isnan(m_impl); }

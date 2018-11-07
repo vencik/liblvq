@@ -49,19 +49,43 @@
 #include <limits>
 #include <exception>
 #include <stdexcept>
+#include <cstdlib>
 
 
-/** Training/testing set */
-typedef std::list<lvq_t::sample_t> tset_t;
+/** Classifier training/test set */
+typedef lvq_t::tset_classifier tset_classifier_t;
+
+
+/** Clustering training/test set */
+typedef lvq_t::tset_clustering  tset_clustering_t;
 
 
 /**
- *  \brief  Read training/testing sample
+ *  \brief  Read vector
  *
  *  \param  in    Input
  *  \param  rank  Vector rank
  *
- *  \return Training/testing sample
+ *  \return Vector
+ */
+static lvq_t::input_t read_vector(
+    std::istream & in,
+    size_t         rank)
+{
+    lvq_t::input_t vector(rank);
+    in >> vector;
+
+    return vector;
+}
+
+
+/**
+ *  \brief  Read training/test sample
+ *
+ *  \param  in    Input
+ *  \param  rank  Vector rank
+ *
+ *  \return Training/test sample
  */
 static lvq_t::sample_t read_sample(
     std::istream & in,
@@ -72,15 +96,12 @@ static lvq_t::sample_t read_sample(
         throw std::runtime_error(
             "parse error: cluster number expected");
 
-    lvq_t::input_t vector(rank);
-    in >> vector;
-
-    return lvq_t::sample_t(vector, cluster);
+    return lvq_t::sample_t(read_vector(in, rank), cluster);
 }
 
 
 /**
- *  \brief  Read training/testing set
+ *  \brief  Read classifier training/test set
  *
  *  Reads sample set; if \c cluster_cnt is nt \c NULL, it stores
  *  the number of clusters in it.
@@ -89,16 +110,16 @@ static lvq_t::sample_t read_sample(
  *  \param  rank         Vector rank
  *  \param  cluster_cnt  Collected cluster count (optional)
  *
- *  \return Training/testing set
+ *  \return Training/test set
  */
-static tset_t read_tset(
+static tset_classifier_t read_classifier_tset(
     std::istream & in,
     size_t         rank,
     size_t       * cluster_cnt = NULL)
 {
     if (NULL != cluster_cnt) *cluster_cnt = 0;
 
-    tset_t tset;
+    tset_classifier_t tset;
 
     while (!in.eof() && EOF != in.peek()) {
         auto sample = read_sample(in, rank);
@@ -121,7 +142,54 @@ static tset_t read_tset(
 
 
 /**
- *  \brief  Train LVQ model
+ *  \brief  Read clustering training/test set
+ *
+ *  Reads sample set; if \c cluster_cnt is nt \c NULL, it stores
+ *  the number of clusters in it.
+ *
+ *  \param  in           Input
+ *  \param  rank         Vector rank
+ *  \param  cluster_cnt  Cluster count (optional)
+ *
+ *  \return Training/test set
+ */
+static tset_clustering_t read_clustering_tset(
+    std::istream & in,
+    size_t         rank,
+    size_t       * cluster_cnt = NULL)
+{
+    if (NULL != cluster_cnt) {
+        if ((in >> *cluster_cnt).fail())
+            throw std::runtime_error(
+                "parse error: cluster number expected");
+
+        // Ignore everything till EOL
+        in.ignore(
+            std::numeric_limits<std::streamsize>::max(),
+            '\n');
+    }
+
+    tset_clustering_t tset;
+
+    while (!in.eof() && EOF != in.peek()) {
+        auto vector = read_vector(in, rank);
+
+        // Ignore everything till EOL
+        in.ignore(
+            std::numeric_limits<std::streamsize>::max(),
+            '\n');
+
+        //std::cerr << vector << std::endl;
+
+        tset.push_back(vector);
+    }
+
+    return tset;
+}
+
+
+/**
+ *  \brief  Train LVQ classifier
  *
  *  \param  train_src  Training set source stream
  *  \param  test_src   Testing set source stream
@@ -129,7 +197,7 @@ static tset_t read_tset(
  *
  *  \return Exit code
  */
-static int train(
+static int train_classifier(
     std::istream & train_src,
     std::istream & test_src,
     size_t         rank)
@@ -137,18 +205,63 @@ static int train(
     size_t cluster_cnt;  // cluster count
 
     // Read training set
-    auto train_set = read_tset(train_src, rank, &cluster_cnt);
+    auto train_set = read_classifier_tset(train_src, rank, &cluster_cnt);
 
     lvq_t lvq(rank, cluster_cnt);
 
     // Train the model
-    lvq.train(train_set);
+    lvq.set_random();
+    lvq.train_supervised(train_set);
 
-    // Read testing set
-    auto test_set = read_tset(test_src, rank);
+    // Read test set
+    auto test_set = read_classifier_tset(test_src, rank);
 
     // Test the model
-    lvq_t::statistics stats = lvq.test(test_set);
+    lvq_t::statistics stats = lvq.test_classifier(test_set);
+
+    // Print statistics
+    std::cerr << "F_1      : " << stats.F(1.0)     << std::endl;
+    std::cerr << "F_0.5    : " << stats.F(0.5)     << std::endl;
+    std::cerr << "F_2      : " << stats.F(2.0)     << std::endl;
+    std::cerr << "Accuracy : " << stats.accuracy() << std::endl;
+
+    // Print cluster representants
+    for (size_t i = 0; i < cluster_cnt; ++i)
+        std::cout << lvq.get(i) << std::endl;
+
+    return 0;
+}
+
+
+/**
+ *  \brief  Train LVQ clustering
+ *
+ *  \param  train_src  Training set source stream
+ *  \param  test_src   Testing set source stream
+ *  \param  rank       Vector rank
+ *
+ *  \return Exit code
+ */
+static int train_clustering(
+    std::istream & train_src,
+    std::istream & test_src,
+    size_t         rank)
+{
+    // Read training set
+    size_t cluster_cnt;
+    auto train_set = read_clustering_tset(train_src, rank, &cluster_cnt);
+
+    lvq_t lvq(rank, cluster_cnt);
+
+    // Train the model
+    lvq.set_random();
+    lvq.train_unsupervised(train_set);
+
+    // Read test set
+    auto test_set = read_clustering_tset(test_src, rank);
+
+    // Test the model
+    lvq_t::statistics stats = lvq.test_clustering(test_set);
 
     // Print statistics
     std::cerr << "F_1      : " << stats.F(1.0)     << std::endl;
@@ -166,19 +279,22 @@ static int train(
 
 /** Main routine */
 static int main_impl(int argc, char * const argv[]) {
+    std::srand(0);
+
     int exit_code = 1;  // faulty execution assumption
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
         // Read command line arguments
-        if (argc < 2) {
+        if (argc < 3) {
             std::cerr
                 << "Usage: " << argv[0]
-                << " <rank> [<training_set>] [<testing_set>]"
+                << " {supervised|unsupervised} <rank> [<training_set>] [<test_set>]"
                 << std::endl;
             break;
         }
 
-        size_t rank = ::atoi(argv[1]);
+        bool   supervised = "supervised" == std::string(argv[1]);
+        size_t rank       = ::atoi(argv[2]);
 
         std::istream  * train_src = &std::cin;
         std::ifstream   train_set;
@@ -196,7 +312,10 @@ static int main_impl(int argc, char * const argv[]) {
 
         exit_code = 64;  // pessimistic assumption
 
-        exit_code = train(*train_src, *test_src, rank);
+        if (supervised)
+            exit_code = train_classifier(*train_src, *test_src, rank);
+        else
+            exit_code = train_clustering(*train_src, *test_src, rank);
 
     } while (0);  // end of pragmatic loop
 

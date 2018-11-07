@@ -49,6 +49,7 @@
 #include <iostream>
 #include <exception>
 #include <stdexcept>
+#include <cstdlib>
 
 
 /** Base numeric type */
@@ -124,7 +125,7 @@ static int test_lvq_ll() {
             const auto & vector = input.first;
             unsigned     clas5  = input.second;
 
-            auto dnorm2 = lvq.train1(vector, clas5, 0.01);
+            auto dnorm2 = lvq.train1_supervised(vector, clas5, 0.01);
 
             std::cout << vector << " "
                 << "|delta|^2 == " << dnorm2
@@ -219,7 +220,7 @@ static int test_lvq_ll() {
 static int test_lvq() {
     std::cout << "Test BEGIN" << std::endl;
 
-    std::list<std::pair<lvq_t::input_t, size_t> > inputs;
+    lvq_t::tset_classifier inputs;
     inputs.emplace_back(input({1, 0, 0}), 0);
     inputs.emplace_back(input({0, 1, 0}), 1);
     inputs.emplace_back(input({0, 0, 1}), 2);
@@ -246,9 +247,10 @@ static int test_lvq() {
     // Training
     std::cout << "Training phase" << std::endl;
 
-    lvq.train(inputs);
+    lvq.set_random();
+    lvq.train_supervised(inputs);
 
-    const auto stats = lvq.test(inputs);
+    const auto stats = lvq.test_classifier(inputs);
 
     std::cout << "Accuracy: " << stats.accuracy() << std::endl;
     std::cout << "F_1: "      << stats.F()        << std::endl;
@@ -261,6 +263,8 @@ static int test_lvq() {
 
 /** Unit test */
 static int main_impl(int argc, char * const argv[]) {
+    std::srand(0);
+
     int exit_code = 64;  // pessimistic assumption
 
     do {  // pragmatic do ... while (0) loop allowing for breaks
