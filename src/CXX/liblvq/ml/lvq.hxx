@@ -800,9 +800,9 @@ class lvq {
     }
 
     /**
-     *  \brief  Test statistics
+     *  \brief  Classifier test statistics
      */
-    class statistics {
+    class classifier_statistics {
         private:
 
         /** Statistics counters */
@@ -849,7 +849,7 @@ class lvq {
          *
          *  \param  ccnt  Number of classes
          */
-        statistics(size_t ccnt):
+        classifier_statistics(size_t ccnt):
             m_cnts(ccnt),
             m_correct(0),
             m_total(0)
@@ -892,7 +892,7 @@ class lvq {
         double precision(size_t c1ass) const {
             if (c1ass >= m_cnts.size())
                 throw std::runtime_error(
-                    "liblvq::lvq::statistics::precision: "
+                    "liblvq::lvq::classifier_statistics::precision: "
                     "no such class");
             return m_cnts[c1ass].precision();
         }
@@ -907,7 +907,7 @@ class lvq {
         double recall(size_t c1ass) const {
             if (c1ass >= m_cnts.size())
                 throw std::runtime_error(
-                    "liblvq::lvq::statistics::recall: "
+                    "liblvq::lvq::classifier_statistics::recall: "
                     "no such class");
             return m_cnts[c1ass].recall();
         }
@@ -923,7 +923,7 @@ class lvq {
         double F(double beta, size_t c1ass) const {
             if (c1ass >= m_cnts.size())
                 throw std::runtime_error(
-                    "liblvq::lvq::statistics::F: "
+                    "liblvq::lvq::classifier_statistics::F: "
                     "no such class");
             return m_cnts[c1ass].F(beta * beta);
         }
@@ -953,7 +953,7 @@ class lvq {
         /** F-score (aka F_1 score) */
         inline double F() const { return F(1.0); }
 
-    };  // end of class statistics
+    };  // end of class classifier_statistics
 
     /**
      *  \brief  Test classifier
@@ -962,8 +962,8 @@ class lvq {
      *
      *  \return Test statistics
      */
-    statistics test_classifier(const tset_classifier & set) {
-        statistics stats(m_theta.row_cnt());
+    classifier_statistics test_classifier(const tset_classifier & set) {
+        classifier_statistics stats(m_theta.row_cnt());
 
         std::for_each(set.begin(), set.end(),
         [this, &stats](const sample_t & item) {
@@ -983,22 +983,94 @@ class lvq {
     }
 
     /**
+     *  \brief  Clustering statistics
+     */
+    class clustering_statistics {
+        private:
+
+        /** Statistics counters */
+        struct counters {
+            base_t sum_dist2;  /**< Sum of vector distances squared */
+            size_t cnt;        /**< Total count                     */
+
+            /** Constructor */
+            counters(): sum_dist2(0), cnt(0) {}
+
+            /** Average error */
+            base_t avg_error() const { return sum_dist2 / base_t(cnt); }
+
+        };  // end of struct counters
+
+        std::vector<counters> m_cnts;   /**< Counters per cluster */
+
+        public:
+
+        /**
+         *  \brief  Constructor
+         *
+         *  \param ccnt  Number of clusters
+         */
+        clustering_statistics(size_t ccnt):
+            m_cnts(ccnt)
+        {}
+
+        /**
+         *  \brief  Record one clustering result
+         *
+         *  \param  cluster  Cluster
+         *  \param  dist2    Cluster representant distance squared
+         */
+        void record(size_t cluster, base_t dist2) {
+            m_cnts[cluster].sum_dist2 += dist2;
+            ++m_cnts[cluster].cnt;
+        }
+
+        /** Average error for particular cluster */
+        base_t avg_error(size_t cluster) const {
+            if (cluster >= m_cnts.size())
+                throw std::runtime_error(
+                    "liblvq::lvq::clusterig_statistics::avg_error: "
+                    "no such cluster");
+            return m_cnts[cluster].avg_error();
+        }
+
+        /** Average error */
+        base_t avg_error() const {
+            base_t sum_dist2 = 0;
+            size_t cnt       = 0;
+            std::for_each(m_cnts.begin(), m_cnts.end(),
+            [&sum_dist2, &cnt](const counters & cnts) {
+                sum_dist2 += cnts.sum_dist2;
+                cnt       += cnts.cnt;
+            });
+
+            return sum_dist2 / base_t(cnt);
+        }
+
+    };  // end of class clustering_statistics
+
+    /**
      *  \brief  Test clustering
      *
      *  \param  set  Test set
      *
      *  \return Test statistics
      */
-    statistics test_clustering(const tset_clustering & set) {
-        statistics stats(m_theta.row_cnt());
+    clustering_statistics test_clustering(const tset_clustering & set) {
+        clustering_statistics stats(m_theta.row_cnt());
 
         std::for_each(set.begin(), set.end(),
         [this, &stats](const input_t & vector) {
-            size_t lvq_cluster = classify(vector);
+            math::vector<base_t> dist2(m_theta.row_cnt());
+            base_t sumd2;
 
-            DEBUG_MSG(vector << ", got class " << lvq_cluster);
+            size_t lvq_cluster = classify_impl(vector, dist2, sumd2);
 
-            stats.record(lvq_cluster, lvq_cluster);
+            DEBUG_MSG(vector <<
+                ", got class " << lvq_cluster <<
+                ", distance^2 == " << dist2[lvq_cluster]);
+
+            stats.record(lvq_cluster, dist2[lvq_cluster]);
         });
 
         return stats;

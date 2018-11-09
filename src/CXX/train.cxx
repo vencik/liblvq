@@ -217,7 +217,7 @@ static int train_classifier(
     auto test_set = read_classifier_tset(test_src, rank);
 
     // Test the model
-    lvq_t::statistics stats = lvq.test_classifier(test_set);
+    lvq_t::classifier_statistics stats = lvq.test_classifier(test_set);
 
     // Print statistics
     std::cerr << "F_1      : " << stats.F(1.0)     << std::endl;
@@ -261,17 +261,19 @@ static int train_clustering(
     auto test_set = read_clustering_tset(test_src, rank);
 
     // Test the model
-    lvq_t::statistics stats = lvq.test_clustering(test_set);
+    lvq_t::clustering_statistics stats = lvq.test_clustering(test_set);
 
     // Print statistics
-    std::cerr << "F_1      : " << stats.F(1.0)     << std::endl;
-    std::cerr << "F_0.5    : " << stats.F(0.5)     << std::endl;
-    std::cerr << "F_2      : " << stats.F(2.0)     << std::endl;
-    std::cerr << "Accuracy : " << stats.accuracy() << std::endl;
+    std::cerr << "Avg. error : " << stats.avg_error() << std::endl;
 
-    // Print cluster representants
-    for (size_t i = 0; i < cluster_cnt; ++i)
+    // Print cluster representants & per-cluster average error
+    for (size_t i = 0; i < cluster_cnt; ++i) {
         std::cout << lvq.get(i) << std::endl;
+
+        std::cerr
+            << "Cluster " << i << " avg. error: "
+            << stats.avg_error(i) << std::endl;
+    }
 
     return 0;
 }
