@@ -53,6 +53,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <list>
+#include <cmath>
 
 
 /** Default convergency window for \c lvq::train */
@@ -944,7 +945,8 @@ class lvq {
 
             std::for_each(m_cnts.begin(), m_cnts.end(),
             [bb, &sum](const counters & cnts) {
-                if (0 < cnts.cnt) sum += cnts.cnt * cnts.F(bb);
+                auto wf = cnts.cnt * cnts.F(bb);
+                if (!std::isnan(wf)) sum += wf;
             });
 
             return sum / (double)m_total;
