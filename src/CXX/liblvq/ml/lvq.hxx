@@ -944,7 +944,7 @@ class lvq {
 
             std::for_each(m_cnts.begin(), m_cnts.end(),
             [bb, &sum](const counters & cnts) {
-                sum += cnts.cnt * cnts.F(bb);
+                if (0 < cnts.cnt) sum += cnts.cnt * cnts.F(bb);
             });
 
             return sum / (double)m_total;
