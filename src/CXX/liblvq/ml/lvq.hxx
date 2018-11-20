@@ -54,6 +54,7 @@
 #include <stdexcept>
 #include <list>
 #include <cmath>
+#include <iostream>
 
 
 /** Default convergency window for \c lvq::train */
@@ -947,8 +948,10 @@ class lvq {
             [bb, &sum](const counters & cnts) {
                 auto wf = cnts.cnt * cnts.F(bb);
                 if (!std::isnan(wf)) sum += wf;
+std::cerr << "!!!!! wf == " << wf << ", sum == " << sum << std::endl;
             });
 
+std::cerr << "!!!!! sum == " << sum << ", m_total == " << m_total << std::endl;
             return sum / (double)m_total;
         }
 

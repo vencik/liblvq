@@ -93,9 +93,9 @@ usage_and_quit () {
 test $# -gt 0 && usage_and_quit
 
 # For OSs like Mac OS X
-libtoolise=libtoolize; which -s $libtoolise || libtoolise=glibtoolize
+libtoolise=libtoolize; which $libtoolise >/dev/null || libtoolise=glibtoolize
 
-which -s $libtoolise aclocal automake autoheader autoconf \
+which $libtoolise aclocal automake autoheader autoconf >/dev/null \
 || usage_and_quit 1 "GNU autotools and libtool are required to run the script"
 
 
