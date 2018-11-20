@@ -92,14 +92,17 @@ usage_and_quit () {
 # Some preliminary checks
 test $# -gt 0 && usage_and_quit
 
-which libtoolize aclocal automake autoheader autoconf >/dev/null \
+# For OSs like Mac OS X
+libtoolise=libtoolize; which -s $libtoolise || libtoolise=glibtoolize
+
+which -s $libtoolise aclocal automake autoheader autoconf \
 || usage_and_quit 1 "GNU autotools and libtool are required to run the script"
 
 
 # Configure build system
 run_libtoolize () {
     log EMPH "Running libtoolize to prepare libtool usage..."
-    libtoolize --copy || quit 2 "libtoolize failed"
+    $libtoolise --copy || quit 2 "libtoolize failed"
 }
 
 run_aclocal () {
